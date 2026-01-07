@@ -169,7 +169,7 @@ async def _get_user_id_from_account_cached(account_id: str) -> Optional[str]:
 
 async def verify_and_get_user_id_from_jwt(request: Request) -> str:
     if config and getattr(config, "DISABLE_AUTH", False) and getattr(config, "ENV_MODE", None) != EnvMode.PRODUCTION:
-        dev_user_id = request.headers.get('x-dev-user-id') or "local-dev-user"
+        dev_user_id = request.headers.get('x-dev-user-id') or "e1ecfeea-0d93-4b49-b79e-a00fc2dfd4ed"
         structlog.contextvars.bind_contextvars(
             user_id=dev_user_id,
             auth_method="disabled"
@@ -291,7 +291,7 @@ async def get_user_id_from_stream_auth(
     logger.debug(f"🔐 get_user_id_from_stream_auth called - has_token: {bool(token)}")
     
     if config and getattr(config, "DISABLE_AUTH", False) and getattr(config, "ENV_MODE", None) != EnvMode.PRODUCTION:
-        dev_user_id = request.headers.get('x-dev-user-id') or "local-dev-user"
+        dev_user_id = request.headers.get('x-dev-user-id') or "e1ecfeea-0d93-4b49-b79e-a00fc2dfd4ed"
         structlog.contextvars.bind_contextvars(
             user_id=dev_user_id,
             auth_method="disabled_stream"
