@@ -41,7 +41,7 @@ services:
 
   backend:
     image: ghcr.io/suna-ai/suna-backend:latest
-    platform: linux/amd64
+    platform: linux/arm64
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -62,7 +62,7 @@ services:
 
   worker:
     image: ghcr.io/suna-ai/suna-backend:latest
-    platform: linux/amd64
+    platform: linux/arm64
     build:
       context: ./backend
       dockerfile: Dockerfile

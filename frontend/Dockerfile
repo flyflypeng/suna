@@ -41,6 +41,7 @@ COPY . .
 # Learn more here: https://nextjs.org/telemetry
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NEXT_OUTPUT=standalone
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 RUN \
   if [ -f yarn.lock ]; then yarn run build; \
