@@ -59,6 +59,7 @@ class Configuration:
     # =========================================
     
     # ===== PRESENCE CONFIGURATION =====
+    DISABLE_AUTH: bool = True
     DISABLE_PRESENCE: bool = False  # Disable presence tracking entirely
     # ==================================
     

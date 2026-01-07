@@ -4,7 +4,7 @@ from typing import Optional
 import jwt
 from jwt.exceptions import PyJWTError
 from core.utils.logger import structlog
-from core.utils.config import config
+from core.utils.config import config, EnvMode
 from core.services.supabase import DBConnection
 from core.services import redis
 from core.utils.logger import logger, structlog
@@ -44,6 +44,26 @@ def _decode_jwt_with_verification(token: str) -> dict:
     
     This function properly validates the JWT signature to prevent token forgery.
     """
+    if config and getattr(config, "DISABLE_AUTH", False) and getattr(config, "ENV_MODE", None) != EnvMode.PRODUCTION:
+        try:
+            return jwt.decode(
+                jwt=token,
+                options={
+                    "verify_signature": False,
+                    "verify_exp": False,
+                    "verify_aud": False,
+                    "verify_iss": False,
+                },
+                algorithms=["HS256"],
+            )
+        except PyJWTError as e:
+            logger.warning(f"JWT decode error in disabled-auth mode: {str(e)}")
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid token",
+                headers={"WWW-Authenticate": "Bearer"}
+            )
+    
     jwt_secret = config.SUPABASE_JWT_SECRET
     
     if not jwt_secret:
@@ -148,6 +168,14 @@ async def _get_user_id_from_account_cached(account_id: str) -> Optional[str]:
         return None
 
 async def verify_and_get_user_id_from_jwt(request: Request) -> str:
+    if config and getattr(config, "DISABLE_AUTH", False) and getattr(config, "ENV_MODE", None) != EnvMode.PRODUCTION:
+        dev_user_id = request.headers.get('x-dev-user-id') or "local-dev-user"
+        structlog.contextvars.bind_contextvars(
+            user_id=dev_user_id,
+            auth_method="disabled"
+        )
+        return dev_user_id
+    
     x_api_key = request.headers.get('x-api-key')
 
     if x_api_key:
@@ -261,6 +289,15 @@ async def get_user_id_from_stream_auth(
     Supports JWT via Authorization header or token query param.
     """
     logger.debug(f"🔐 get_user_id_from_stream_auth called - has_token: {bool(token)}")
+    
+    if config and getattr(config, "DISABLE_AUTH", False) and getattr(config, "ENV_MODE", None) != EnvMode.PRODUCTION:
+        dev_user_id = request.headers.get('x-dev-user-id') or "local-dev-user"
+        structlog.contextvars.bind_contextvars(
+            user_id=dev_user_id,
+            auth_method="disabled_stream"
+        )
+        logger.debug(f"✅ Auth disabled, using dev user: {dev_user_id}")
+        return dev_user_id
     
     try:
         # Try JWT header first
