@@ -11,6 +11,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { backendApi } from "@/lib/api-client";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
+import { generateRandomId } from "@/lib/utils";
 
 interface APIKeyForm {
     [key: string]: string;
@@ -49,7 +50,7 @@ export function LocalEnvManager() {
   }
 
   const handleAddNewKey = () => {
-    setNewApiKeys([...newApiKeys, {key: "", value: "", id: crypto.randomUUID()}]);
+    setNewApiKeys([...newApiKeys, {key: "", value: "", id: generateRandomId()}]);
   }
 
   const checkKeyIsDuplicate = (key: string) => {

@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { generateRandomId } from '@/lib/utils';
 
 export interface OptimisticFile {
   id: string;
@@ -31,7 +32,7 @@ export const useOptimisticFilesStore = create<OptimisticFilesState>((set, get) =
 
   addFiles: (threadId, projectId, filesToAdd) => {
     const newOptimisticFiles: OptimisticFile[] = filesToAdd.map((file) => ({
-      id: crypto.randomUUID(),
+      id: generateRandomId(),
       file,
       name: file.name,
       size: file.size,
