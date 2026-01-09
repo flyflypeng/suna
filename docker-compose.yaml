@@ -1,1 +1,117 @@
-D:/Homelab/suna-private/docker-compose.yaml
+# ============================================================================
+# KORTIX COMMUNITY DOCKER COMPOSE - LOCAL DEVELOPMENT/SELF HOSTING
+# ============================================================================
+# This Docker Compose file runs Kortix Super Worker services (Backend, Worker, Frontend, Redis)
+#
+# ⚠️  IMPORTANT LIMITATION - LOCAL SUPABASE:
+# Currently, local Supabase (via `npx supabase start`) is NOT supported with
+# Docker Compose due to network configuration complexity.
+#
+# CURRENT WORKAROUND:
+# - Use cloud Supabase for Docker Compose setup
+# - OR run everything manually (no Docker) to use local Supabase
+#
+# Quick Start:
+#   docker compose up -d          # Start all services
+#   docker compose down           # Stop all services
+#   docker compose logs -f        # View all logs
+#
+# Access:
+#   - Kortix Super Worker Frontend:     http://localhost:9090
+#   - Kortix Super Worker Backend API:  http://localhost:8000
+# ============================================================================
+
+services:
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - ./backend/services/docker/redis.conf:/usr/local/etc/redis/redis.conf:ro
+    command: redis-server /usr/local/etc/redis/redis.conf --save 60 1 --loglevel warning
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  backend:
+    image: ghcr.io/suna-ai/suna-backend:latest
+    platform: linux/amd64
+    env_file:
+      - ./backend/.env
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/.env:/app/.env:ro
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_SSL=False
+    depends_on:
+      redis:
+        condition: service_healthy
+      worker:
+        condition: service_started
+
+  worker:
+    image: ghcr.io/suna-ai/suna-backend:latest
+    platform: linux/amd64
+    env_file:
+      - ./backend/.env
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    command: uv run dramatiq --skip-logging --processes 4 --threads 4 run_agent_background
+    volumes:
+      - ./backend/.env:/app/.env:ro
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=
+      - REDIS_SSL=False
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  frontend:
+    init: true
+    env_file:
+      - ./frontend/.env.local
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://localhost:8000/v1}
+        - NEXT_PUBLIC_URL=${NEXT_PUBLIC_URL:-http://localhost:9990}
+        - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+        - NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY}
+        - NEXT_PUBLIC_ENV_MODE=${NEXT_PUBLIC_ENV_MODE:-staging}
+        - NEXT_PUBLIC_NOVU_APP_IDENTIFIER=${NEXT_PUBLIC_NOVU_APP_IDENTIFIER}
+        - NEXT_PUBLIC_DISABLE_MOBILE_ADVERTISING=${NEXT_PUBLIC_DISABLE_MOBILE_ADVERTISING}
+        - BACKEND_INTERNAL_URL=http://backend:8000
+    environment:
+      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://localhost:8000/v1}
+      - BACKEND_INTERNAL_URL=http://backend:8000
+      - NEXT_PUBLIC_URL=${NEXT_PUBLIC_URL:-http://localhost:9990}
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+      - NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY}
+      - NEXT_PUBLIC_ENV_MODE=${NEXT_PUBLIC_ENV_MODE:-staging}
+      - NEXT_PUBLIC_NOVU_APP_IDENTIFIER=${NEXT_PUBLIC_NOVU_APP_IDENTIFIER}
+      - NEXT_PUBLIC_DISABLE_MOBILE_ADVERTISING=${NEXT_PUBLIC_DISABLE_MOBILE_ADVERTISING}
+    ports:
+      - "9990:3000"
+    depends_on:
+      - backend
+
+volumes:
+  redis_data:
