@@ -38,7 +38,7 @@ services:
 
   backend:
     image: ghcr.io/suna-ai/suna-backend:latest
-    platform: linux/amd64
+    platform: linux/arm64
     env_file:
       - ./backend/.env
     build:
@@ -61,7 +61,7 @@ services:
 
   worker:
     image: ghcr.io/suna-ai/suna-backend:latest
-    platform: linux/amd64
+    platform: linux/arm64
     env_file:
       - ./backend/.env
     build:
@@ -97,17 +97,6 @@ services:
         - NEXT_PUBLIC_NOVU_APP_IDENTIFIER=${NEXT_PUBLIC_NOVU_APP_IDENTIFIER}
         - NEXT_PUBLIC_DISABLE_MOBILE_ADVERTISING=${NEXT_PUBLIC_DISABLE_MOBILE_ADVERTISING}
         - BACKEND_INTERNAL_URL=http://backend:8000
-    environment:
-      - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-      - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-      - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://localhost:8000/v1}
-      - BACKEND_INTERNAL_URL=http://backend:8000
-      - NEXT_PUBLIC_URL=${NEXT_PUBLIC_URL:-http://localhost:9990}
-      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
-      - NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY}
-      - NEXT_PUBLIC_ENV_MODE=${NEXT_PUBLIC_ENV_MODE:-staging}
-      - NEXT_PUBLIC_NOVU_APP_IDENTIFIER=${NEXT_PUBLIC_NOVU_APP_IDENTIFIER}
-      - NEXT_PUBLIC_DISABLE_MOBILE_ADVERTISING=${NEXT_PUBLIC_DISABLE_MOBILE_ADVERTISING}
     ports:
       - "9990:3000"
     depends_on:

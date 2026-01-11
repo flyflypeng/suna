@@ -74,20 +74,22 @@ async def lifespan(app: FastAPI):
         
         # Initialize Ollama models (dynamic discovery or fallback to generic)
         from core.ai_models import registry
-        try:
-            await registry.initialize_ollama_models()
-            logger.debug("Ollama model initialization completed")
-        except Exception as e:
-            logger.error(f"Failed to initialize Ollama models: {e}")
-            # Continue - the application will work without Ollama models
+        if config.OLLAMA_ENABLED:
+            try:
+                await registry.initialize_ollama_models()
+                logger.debug("Ollama model initialization completed")
+            except Exception as e:
+                logger.error(f"Failed to initialize Ollama models: {e}")
+                # Continue - the application will work without Ollama models
         
         # Initialize LM Studio models (dynamic discovery)
-        try:
-            await registry.initialize_lm_studio_models()
-            logger.debug("LM Studio model initialization completed")
-        except Exception as e:
-            logger.error(f"Failed to initialize LM Studio models: {e}")
-            # Continue - the application will work without LM Studio models
+        if config.LM_STUDIO_ENABLED:
+            try:
+                await registry.initialize_lm_studio_models()
+                logger.debug("LM Studio model initialization completed")
+            except Exception as e:
+                logger.error(f"Failed to initialize LM Studio models: {e}")
+                # Continue - the application will work without LM Studio models
         
         # Start background tasks
         # asyncio.create_task(core_api.restore_running_agent_runs())

@@ -6,6 +6,8 @@ WORKDIR /app
 RUN apk add --no-cache curl git \
     # Dependencies for Python package compilation
     freetype-dev \
+    cargo \
+    rust \
     gcc \
     musl-dev \
     python3-dev

@@ -69,7 +69,7 @@ def setup_api_keys() -> None:
     if hasattr(config, 'OPENROUTER_API_KEY') and hasattr(config, 'OPENROUTER_API_BASE'):
         if config.OPENROUTER_API_KEY and config.OPENROUTER_API_BASE:
             os.environ["OPENROUTER_API_BASE"] = config.OPENROUTER_API_BASE
-            # logger.debug(f"Set OPENROUTER_API_BASE to {config.OPENROUTER_API_BASE}")
+            logger.debug(f"Set OPENROUTER_API_BASE to {config.OPENROUTER_API_BASE}")
 
     # Set up AWS Bedrock bearer token authentication
     if hasattr(config, 'AWS_BEARER_TOKEN_BEDROCK'):

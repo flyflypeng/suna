@@ -34,221 +34,432 @@ class ModelRegistry:
         # --- Vertex AI Models (Google & Anthropic) ---
         # Note: All models below use Vertex AI as the provider
         
-        # Gemini 3 Pro Preview
-        self.register(Model(
-            id="vertex_ai/gemini-3-pro-preview",
-            name="Gemini 3 Pro Preview",
-            provider=ModelProvider.VERTEX_AI,
-            aliases=["gemini-3-pro-preview", "vertex-gemini-3-pro"],
-            context_window=200_000,
-            max_output_tokens=64_000,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.VISION,
-                ModelCapability.THINKING, # "thinking_level" support
-                ModelCapability.COMPUTER_USE,
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=2.00, #$2.00, prompts <= 200k tokens
-                output_cost_per_million_tokens=12.00 #$12.00, responses <= 200k tokens
-            ),
-            tier_availability=["free", "paid"],
-            priority=121,
-            recommended=True,
-            enabled=config.VERTEX_AI_PROJECT is not None,
-            fallback_models=["vertex_ai/gemini-2.5-pro"]
-        ))
+        # # Gemini 3 Pro Preview
+        # self.register(Model(
+        #     id="vertex_ai/gemini-3-pro-preview",
+        #     name="Gemini 3 Pro Preview",
+        #     provider=ModelProvider.VERTEX_AI,
+        #     aliases=["gemini-3-pro-preview", "vertex-gemini-3-pro"],
+        #     context_window=200_000,
+        #     max_output_tokens=64_000,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #         ModelCapability.THINKING, # "thinking_level" support
+        #         ModelCapability.COMPUTER_USE,
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=2.00, #$2.00, prompts <= 200k tokens
+        #         output_cost_per_million_tokens=12.00 #$12.00, responses <= 200k tokens
+        #     ),
+        #     tier_availability=["free", "paid"],
+        #     priority=121,
+        #     recommended=True,
+        #     enabled=config.VERTEX_AI_PROJECT is not None,
+        #     fallback_models=["vertex_ai/gemini-2.5-pro"]
+        # ))
 
-        # Gemini 3 Pro Preview (MAX TOKENS)
-        self.register(Model(
-            id="vertex_ai/gemini-3-pro-preview",
-            name="Gemini 3 Pro Preview - Max",
-            provider=ModelProvider.VERTEX_AI,
-            aliases=["gemini-3-pro-preview-max", "vertex-gemini-3-pro-max"],
-            context_window=1_000_000,
-            max_output_tokens=64_000,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.VISION,
-                ModelCapability.THINKING, # "thinking_level" support
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=4.00, #$4.00, prompts > 200k tokens
-                output_cost_per_million_tokens=18.00 #$18.00, responses > 200k tokens
-            ),
-            tier_availability=["paid"],
-            priority=120,
-            recommended=False,
-            enabled=config.VERTEX_AI_PROJECT is not None,
-            fallback_models=["vertex_ai/gemini-2.5-pro"]
-        ))
+        # # Gemini 3 Pro Preview (MAX TOKENS)
+        # self.register(Model(
+        #     id="vertex_ai/gemini-3-pro-preview",
+        #     name="Gemini 3 Pro Preview - Max",
+        #     provider=ModelProvider.VERTEX_AI,
+        #     aliases=["gemini-3-pro-preview-max", "vertex-gemini-3-pro-max"],
+        #     context_window=1_000_000,
+        #     max_output_tokens=64_000,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #         ModelCapability.THINKING, # "thinking_level" support
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=4.00, #$4.00, prompts > 200k tokens
+        #         output_cost_per_million_tokens=18.00 #$18.00, responses > 200k tokens
+        #     ),
+        #     tier_availability=["paid"],
+        #     priority=120,
+        #     recommended=False,
+        #     enabled=config.VERTEX_AI_PROJECT is not None,
+        #     fallback_models=["vertex_ai/gemini-2.5-pro"]
+        # ))
 
-        # Gemini 2.5 Pro (MAX TOKENS)
-        self.register(Model(
-            id="vertex_ai/gemini-2.5-pro-max",
-            name="Gemini 2.5 Pro - Max",
-            provider=ModelProvider.VERTEX_AI,
-            aliases=["gemini-2.5-pro-max", "vertex-gemini-2.5-pro-max"],
-            context_window=1_000_000,
-            max_output_tokens=65_536,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.VISION,
-                ModelCapability.THINKING, # "thinking_budget" support
-                ModelCapability.STRUCTURED_OUTPUT,
-                ModelCapability.WEB_SEARCH, # "Grounding"
-                ModelCapability.CODE_INTERPRETER, # "Code Execution"
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=2.50, #$2.50, prompts > 200k tokens
-                output_cost_per_million_tokens=15.00 #$15.00, responses > 200k tokens
-            ),
-            tier_availability=["paid"],
-            priority=110,
-            recommended=False,
-            enabled=config.VERTEX_AI_PROJECT is not None,
-            fallback_models=["vertex_ai/gemini-2.5-flash"]
-        ))
+        # # Gemini 2.5 Pro (MAX TOKENS)
+        # self.register(Model(
+        #     id="vertex_ai/gemini-2.5-pro-max",
+        #     name="Gemini 2.5 Pro - Max",
+        #     provider=ModelProvider.VERTEX_AI,
+        #     aliases=["gemini-2.5-pro-max", "vertex-gemini-2.5-pro-max"],
+        #     context_window=1_000_000,
+        #     max_output_tokens=65_536,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #         ModelCapability.THINKING, # "thinking_budget" support
+        #         ModelCapability.STRUCTURED_OUTPUT,
+        #         ModelCapability.WEB_SEARCH, # "Grounding"
+        #         ModelCapability.CODE_INTERPRETER, # "Code Execution"
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=2.50, #$2.50, prompts > 200k tokens
+        #         output_cost_per_million_tokens=15.00 #$15.00, responses > 200k tokens
+        #     ),
+        #     tier_availability=["paid"],
+        #     priority=110,
+        #     recommended=False,
+        #     enabled=config.VERTEX_AI_PROJECT is not None,
+        #     fallback_models=["vertex_ai/gemini-2.5-flash"]
+        # ))
 
-        # Gemini 2.5 Pro
-        self.register(Model(
-            id="vertex_ai/gemini-2.5-pro",
-            name="Gemini 2.5 Pro",
-            provider=ModelProvider.VERTEX_AI,
-            aliases=["gemini-2.5-pro", "vertex-gemini-2.5-pro"],
-            context_window=200_000,
-            max_output_tokens=65_536,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.VISION,
-                ModelCapability.THINKING, # "thinking_budget" support
-                ModelCapability.STRUCTURED_OUTPUT,
-                ModelCapability.WEB_SEARCH, # "Grounding"
-                ModelCapability.CODE_INTERPRETER, # "Code Execution"
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=1.25, #$1.25, prompts > 200k tokens
-                output_cost_per_million_tokens=10.00 #$10.00, responses > 200k tokens
-            ),
-            tier_availability=["paid"],
-            priority=111,
-            enabled=config.VERTEX_AI_PROJECT is not None,
-            fallback_models=["vertex_ai/gemini-2.5-flash"]
-        ))
+        # # Gemini 2.5 Pro
+        # self.register(Model(
+        #     id="vertex_ai/gemini-2.5-pro",
+        #     name="Gemini 2.5 Pro",
+        #     provider=ModelProvider.VERTEX_AI,
+        #     aliases=["gemini-2.5-pro", "vertex-gemini-2.5-pro"],
+        #     context_window=200_000,
+        #     max_output_tokens=65_536,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #         ModelCapability.THINKING, # "thinking_budget" support
+        #         ModelCapability.STRUCTURED_OUTPUT,
+        #         ModelCapability.WEB_SEARCH, # "Grounding"
+        #         ModelCapability.CODE_INTERPRETER, # "Code Execution"
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=1.25, #$1.25, prompts > 200k tokens
+        #         output_cost_per_million_tokens=10.00 #$10.00, responses > 200k tokens
+        #     ),
+        #     tier_availability=["paid"],
+        #     priority=111,
+        #     enabled=config.VERTEX_AI_PROJECT is not None,
+        #     fallback_models=["vertex_ai/gemini-2.5-flash"]
+        # ))
 
-        # Gemini 2.5 Flash
-        self.register(Model(
-            id="vertex_ai/gemini-2.5-flash",
-            name="Gemini 2.5 Flash",
-            provider=ModelProvider.VERTEX_AI,
-            aliases=["gemini-2.5-flash", "vertex-gemini-2.5-flash"],
-            context_window=1_048_576,
-            max_output_tokens=64_000,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.VISION,
-                ModelCapability.THINKING, # "thinking_budget" support
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=0.30, #	$0.30 (text / image / video)
-                output_cost_per_million_tokens=2.50 #	$2.50 #no tiered pricing up to 1M context window
-            ),
-            tier_availability=["free", "paid"],
-            priority=108,
-            recommended=True,
-            enabled=config.VERTEX_AI_PROJECT is not None,
-            fallback_models=["google/gemini-2.5-flash"]
-        ))
+        # # Gemini 2.5 Flash
+        # self.register(Model(
+        #     id="vertex_ai/gemini-2.5-flash",
+        #     name="Gemini 2.5 Flash",
+        #     provider=ModelProvider.VERTEX_AI,
+        #     aliases=["gemini-2.5-flash", "vertex-gemini-2.5-flash"],
+        #     context_window=1_048_576,
+        #     max_output_tokens=64_000,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #         ModelCapability.THINKING, # "thinking_budget" support
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=0.30, #	$0.30 (text / image / video)
+        #         output_cost_per_million_tokens=2.50 #	$2.50 #no tiered pricing up to 1M context window
+        #     ),
+        #     tier_availability=["free", "paid"],
+        #     priority=108,
+        #     recommended=True,
+        #     enabled=config.VERTEX_AI_PROJECT is not None,
+        #     fallback_models=["google/gemini-2.5-flash"]
+        # ))
 
-        # Gemini 2.5 Flash-Lite
-        self.register(Model(
-            id="vertex_ai/gemini-2.5-flash-lite",
-            name="Gemini 2.5 Flash-Lite",
-            provider=ModelProvider.VERTEX_AI,
-            aliases=["gemini-2.5-flash-lite", "vertex-gemini-2.5-flash-lite"],
-            context_window=1_048_576,
-            max_output_tokens=8_192,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.VISION,
-                ModelCapability.STRUCTURED_OUTPUT,
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=0.10, # 	$0.10 (text / image / video)
-                output_cost_per_million_tokens=0.40 # 	$0.40 
-            ),
-            tier_availability=["free", "paid"],
-            priority=90,
-            recommended=True,
-            enabled=config.VERTEX_AI_PROJECT is not None,
-            fallback_models=["google/gemini-2.5-flash-lite"]
-        ))
+        # # Gemini 2.5 Flash-Lite
+        # self.register(Model(
+        #     id="vertex_ai/gemini-2.5-flash-lite",
+        #     name="Gemini 2.5 Flash-Lite",
+        #     provider=ModelProvider.VERTEX_AI,
+        #     aliases=["gemini-2.5-flash-lite", "vertex-gemini-2.5-flash-lite"],
+        #     context_window=1_048_576,
+        #     max_output_tokens=8_192,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #         ModelCapability.STRUCTURED_OUTPUT,
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=0.10, # 	$0.10 (text / image / video)
+        #         output_cost_per_million_tokens=0.40 # 	$0.40 
+        #     ),
+        #     tier_availability=["free", "paid"],
+        #     priority=90,
+        #     recommended=True,
+        #     enabled=config.VERTEX_AI_PROJECT is not None,
+        #     fallback_models=["google/gemini-2.5-flash-lite"]
+        # ))
 
-        # Gemini Computer Use Preview
-        self.register(Model(
-            id="vertex_ai/gemini-2.5-computer-use-preview-10-2025",
-            name="Gemini Computer Use",
-            provider=ModelProvider.VERTEX_AI,
-            aliases=["gemini-computer-use", "vertex-gemini-computer-use"],
-            context_window=128_000,
-            max_output_tokens=64_000,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.VISION,
-                ModelCapability.COMPUTER_USE,
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=1.25, # 	$1.25, prompts <= 200k tokens
-                output_cost_per_million_tokens=10.00 # 	$10.00, responses <= 200k tokens
-            ),
-            recommended=False,
-            tier_availability=["paid"],
-            priority=90,
-            enabled=config.VERTEX_AI_PROJECT is not None,
-            fallback_models=["vertex_ai/gemini-3-pro-preview"]
-        ))
+        # # Gemini Computer Use Preview
+        # self.register(Model(
+        #     id="vertex_ai/gemini-2.5-computer-use-preview-10-2025",
+        #     name="Gemini Computer Use",
+        #     provider=ModelProvider.VERTEX_AI,
+        #     aliases=["gemini-computer-use", "vertex-gemini-computer-use"],
+        #     context_window=128_000,
+        #     max_output_tokens=64_000,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.VISION,
+        #         ModelCapability.COMPUTER_USE,
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=1.25, # 	$1.25, prompts <= 200k tokens
+        #         output_cost_per_million_tokens=10.00 # 	$10.00, responses <= 200k tokens
+        #     ),
+        #     recommended=False,
+        #     tier_availability=["paid"],
+        #     priority=90,
+        #     enabled=config.VERTEX_AI_PROJECT is not None,
+        #     fallback_models=["vertex_ai/gemini-3-pro-preview"]
+        # ))
 
-        # Claude Sonnet 4.5 Max Context (via Vertex AI)
-        self.register(Model(
-            id="vertex_ai/claude-sonnet-4-5@20250929",
-            name="Claude Sonnet 4.5 Max",
-            provider=ModelProvider.VERTEX_AI,
-            aliases=["claude-sonnet-4.5", "vertex-claude-sonnet-4.5"],
-            context_window=1_000_000, # 1M in Beta
-            max_output_tokens=64_000,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.VISION,
-                ModelCapability.THINKING, # "Extended Thinking" implied?
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=3.00,
-                output_cost_per_million_tokens=15.00
-            ),
-            tier_availability=["paid"],
-            priority=106,
-            enabled=config.VERTEX_AI_PROJECT is not None,
-            fallback_models=["vertex_ai/gemini-3-pro-preview"],
-            config=ModelConfig(
-                extra_headers={
-                    "anthropic-beta": "context-1m-2025-08-07"
-                },
-            ),
-        ))
+        # # Claude Sonnet 4.5 Max Context (via Vertex AI)
+        # self.register(Model(
+        #     id="vertex_ai/claude-sonnet-4-5@20250929",
+        #     name="Claude Sonnet 4.5 Max",
+        #     provider=ModelProvider.VERTEX_AI,
+        #     aliases=["claude-sonnet-4.5", "vertex-claude-sonnet-4.5"],
+        #     context_window=1_000_000, # 1M in Beta
+        #     max_output_tokens=64_000,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #         ModelCapability.THINKING, # "Extended Thinking" implied?
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=3.00,
+        #         output_cost_per_million_tokens=15.00
+        #     ),
+        #     tier_availability=["paid"],
+        #     priority=106,
+        #     enabled=config.VERTEX_AI_PROJECT is not None,
+        #     fallback_models=["vertex_ai/gemini-3-pro-preview"],
+        #     config=ModelConfig(
+        #         extra_headers={
+        #             "anthropic-beta": "context-1m-2025-08-07"
+        #         },
+        #     ),
+        # ))
 
-        # Claude Sonnet 4.5 (via Vertex AI)
+        # # Claude Sonnet 4.5 (via Vertex AI)
+        # self.register(Model(
+        #     id="vertex_ai/claude-sonnet-4-5@20250929",
+        #     name="Claude Sonnet 4.5",
+        #     provider=ModelProvider.VERTEX_AI,
+        #     aliases=["claude-sonnet-4.5", "vertex-claude-sonnet-4.5"],
+        #     context_window=200_000, # 200k
+        #     max_output_tokens=64_000,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #         ModelCapability.THINKING, # "Extended Thinking" implied?
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=3.00,
+        #         output_cost_per_million_tokens=15.00
+        #     ),
+        #     tier_availability=["free","paid"],
+        #     priority=106,
+        #     enabled=config.VERTEX_AI_PROJECT is not None,
+        #     fallback_models=["vertex_ai/gemini-3-pro-preview"],
+        #     config=ModelConfig(
+        #         extra_headers={
+        #             "anthropic-beta": "context-1m-2025-08-07"
+        #         },
+        #     ),
+        # ))
+
+        # # Claude Haiku 4.5 (via Vertex AI)
+        # self.register(Model(
+        #     id="vertex_ai/claude-haiku-4-5@20251001",
+        #     name="Claude Haiku 4.5",
+        #     provider=ModelProvider.VERTEX_AI,
+        #     aliases=["claude-haiku-4.5", "vertex-claude-haiku-4.5"],
+        #     context_window=200_000,
+        #     max_output_tokens=64_000,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #         ModelCapability.THINKING, # "Extended Thinking"
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=1.00,
+        #         output_cost_per_million_tokens=5.00
+        #     ),
+        #     tier_availability=["paid"],
+        #     priority=110,
+        #     recommended=True,
+        #     enabled=config.VERTEX_AI_PROJECT is not None,
+        #     fallback_models=["vertex_ai/gemini-2.5-flash"],
+        #     config=ModelConfig(
+        #         extra_body={
+        #             "anthropic_version": "vertex-2023-10-16"
+        #         }
+        #     ),
+        # ))
+
+        # # Llama 4 Scout via Google Vertex API
+        # self.register(Model(
+        #     id="vertex_ai/meta/llama-4-scout-17b-16e-instruct-maas",
+        #     name="Llama 4 Scout",
+        #     provider=ModelProvider.VERTEX_AI,
+        #     aliases=["llama-4-scout", "vertex-llama-4-scout"],
+        #     context_window=10_000_000,
+        #     max_output_tokens=8192, # Defaulting as N/A in table usually means standard or unknown
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.VISION,
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=0.10, # Placeholder
+        #         output_cost_per_million_tokens=0.40
+        #     ),
+        #     tier_availability=["free", "paid"],
+        #     priority=104,
+        #     enabled=config.VERTEX_AI_PROJECT is not None,
+        #     fallback_models=["vertex_ai/gemini-2.5-flash"]
+        # ))
+
+        # # Llama 4 Maverick via Google Vertex API
+        # self.register(Model(
+        #     id="vertex_ai/meta/llama-4-maverick-17b-128e-instruct-maas",
+        #     name="Llama 4 Maverick",
+        #     provider=ModelProvider.VERTEX_AI,
+        #     aliases=["llama-4-maverick", "vertex-llama-4-maverick"],
+        #     context_window=1_000_000,
+        #     max_output_tokens=8192,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.VISION,
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=0.20, # Placeholder
+        #         output_cost_per_million_tokens=0.80
+        #     ),
+        #     tier_availability=["paid"],
+        #     priority=103,
+        #     enabled=config.VERTEX_AI_PROJECT is not None,
+        #     fallback_models=["vertex_ai/gemini-2.5-pro"]
+        # ))
+
+        # # --- OpenAI Models via OpenAI API ---
+        # self.register(Model(
+        #     id="openai/gpt-5",
+        #     name="GPT-5",
+        #     provider=ModelProvider.OPENAI,
+        #     aliases=["gpt-5", "GPT-5"],
+        #     context_window=400_000,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #         ModelCapability.STRUCTURED_OUTPUT,
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=1.25,
+        #         output_cost_per_million_tokens=10.00
+        #     ),
+        #     tier_availability=["paid"],
+        #     priority=106,
+        #     enabled=config.OPENAI_API_KEY is not None,
+        #     fallback_models=["openai/gpt-4o"]
+        # ))
+
+        # self.register(Model(
+        #     id="openai/gpt-4.1",
+        #     name="GPT-4.1",
+        #     provider=ModelProvider.OPENAI,
+        #     aliases=["gpt-4.1", "GPT-4.1"],
+        #     context_window=128_000,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #         ModelCapability.STRUCTURED_OUTPUT,
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=3.00,
+        #         output_cost_per_million_tokens=12.00
+        #     ),
+        #     tier_availability=["paid"],
+        #     priority=100,
+        #     enabled=config.OPENAI_API_KEY is not None,
+        #     fallback_models=["openai/gpt-4o"]
+        # ))
+
+        # self.register(Model(
+        #     id="openai/gpt-4.1-mini",
+        #     name="GPT-4.1 Mini",
+        #     provider=ModelProvider.OPENAI,
+        #     aliases=["gpt-4.1-mini", "GPT-4.1 Mini"],
+        #     context_window=128_000,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=0.60,
+        #         output_cost_per_million_tokens=2.40
+        #     ),
+        #     tier_availability=["paid"],
+        #     priority=99,
+        #     enabled=config.OPENAI_API_KEY is not None,
+        #     fallback_models=["openai/gpt-4o-mini"]
+        # ))
+
+        # self.register(Model(
+        #     id="openai/gpt-4o",
+        #     name="GPT-4o",
+        #     provider=ModelProvider.OPENAI,
+        #     aliases=["gpt-4o", "GPT-4o"],
+        #     context_window=128_000,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #         ModelCapability.STRUCTURED_OUTPUT,
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=3.00,
+        #         output_cost_per_million_tokens=10.00
+        #     ),
+        #     tier_availability=["paid"],
+        #     priority=98,
+        #     enabled=config.OPENAI_API_KEY is not None,
+        #     fallback_models=["openai/gpt-4o-mini"]
+        # ))
+
+        # self.register(Model(
+        #     id="openai/gpt-4o-mini",
+        #     name="GPT-4o Mini",
+        #     provider=ModelProvider.OPENAI,
+        #     aliases=["gpt-4o-mini", "GPT-4o Mini"],
+        #     context_window=128_000,
+        #     capabilities=[
+        #         ModelCapability.CHAT,
+        #         ModelCapability.FUNCTION_CALLING,
+        #         ModelCapability.VISION,
+        #     ],
+        #     pricing=ModelPricing(
+        #         input_cost_per_million_tokens=0.15,
+        #         output_cost_per_million_tokens=0.60
+        #     ),
+        #     tier_availability=["free", "paid"],
+        #     priority=97,
+        #     enabled=config.OPENAI_API_KEY is not None,
+        # ))
+
+        # --- Models via OpenRouter API ---
         self.register(Model(
-            id="vertex_ai/claude-sonnet-4-5@20250929",
+            id="anthropic/claude-sonnet-4.5",
             name="Claude Sonnet 4.5",
-            provider=ModelProvider.VERTEX_AI,
-            aliases=["claude-sonnet-4.5", "vertex-claude-sonnet-4.5"],
+            provider=ModelProvider.OPENROUTER,
+            aliases=["claude-sonnet-4.5"],
             context_window=200_000, # 200k
             max_output_tokens=64_000,
             capabilities=[
@@ -256,6 +467,7 @@ class ModelRegistry:
                 ModelCapability.FUNCTION_CALLING,
                 ModelCapability.VISION,
                 ModelCapability.THINKING, # "Extended Thinking" implied?
+                ModelCapability.STRUCTURED_OUTPUT,
             ],
             pricing=ModelPricing(
                 input_cost_per_million_tokens=3.00,
@@ -263,195 +475,32 @@ class ModelRegistry:
             ),
             tier_availability=["free","paid"],
             priority=106,
-            enabled=config.VERTEX_AI_PROJECT is not None,
-            fallback_models=["vertex_ai/gemini-3-pro-preview"],
-            config=ModelConfig(
-                extra_headers={
-                    "anthropic-beta": "context-1m-2025-08-07"
-                },
-            ),
+            enabled=config.OPENROUTER_API_KEY is not None,
+            fallback_models=["anthropic/claude-sonnet-4"],
         ))
 
-        # Claude Haiku 4.5 (via Vertex AI)
         self.register(Model(
-            id="vertex_ai/claude-haiku-4-5@20251001",
-            name="Claude Haiku 4.5",
-            provider=ModelProvider.VERTEX_AI,
-            aliases=["claude-haiku-4.5", "vertex-claude-haiku-4.5"],
-            context_window=200_000,
-            max_output_tokens=64_000,
+            id="moonshotai/kimi-k2-0905",
+            name="Kimi K2 0905",
+            provider=ModelProvider.OPENROUTER,
+            aliases=["kimi-k2-0905"],
+            context_window=262_144,
+            max_output_tokens=262_144,
             capabilities=[
                 ModelCapability.CHAT,
                 ModelCapability.FUNCTION_CALLING,
                 ModelCapability.VISION,
-                ModelCapability.THINKING, # "Extended Thinking"
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=1.00,
-                output_cost_per_million_tokens=5.00
-            ),
-            tier_availability=["paid"],
-            priority=110,
-            recommended=True,
-            enabled=config.VERTEX_AI_PROJECT is not None,
-            fallback_models=["vertex_ai/gemini-2.5-flash"],
-            config=ModelConfig(
-                extra_body={
-                    "anthropic_version": "vertex-2023-10-16"
-                }
-            ),
-        ))
-
-        # Llama 4 Scout via Google Vertex API
-        self.register(Model(
-            id="vertex_ai/meta/llama-4-scout-17b-16e-instruct-maas",
-            name="Llama 4 Scout",
-            provider=ModelProvider.VERTEX_AI,
-            aliases=["llama-4-scout", "vertex-llama-4-scout"],
-            context_window=10_000_000,
-            max_output_tokens=8192, # Defaulting as N/A in table usually means standard or unknown
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.VISION,
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=0.10, # Placeholder
-                output_cost_per_million_tokens=0.40
-            ),
-            tier_availability=["free", "paid"],
-            priority=104,
-            enabled=config.VERTEX_AI_PROJECT is not None,
-            fallback_models=["vertex_ai/gemini-2.5-flash"]
-        ))
-
-        # Llama 4 Maverick via Google Vertex API
-        self.register(Model(
-            id="vertex_ai/meta/llama-4-maverick-17b-128e-instruct-maas",
-            name="Llama 4 Maverick",
-            provider=ModelProvider.VERTEX_AI,
-            aliases=["llama-4-maverick", "vertex-llama-4-maverick"],
-            context_window=1_000_000,
-            max_output_tokens=8192,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.VISION,
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=0.20, # Placeholder
-                output_cost_per_million_tokens=0.80
-            ),
-            tier_availability=["paid"],
-            priority=103,
-            enabled=config.VERTEX_AI_PROJECT is not None,
-            fallback_models=["vertex_ai/gemini-2.5-pro"]
-        ))
-
-        # --- OpenAI Models via OpenAI API ---
-        self.register(Model(
-            id="openai/gpt-5",
-            name="GPT-5",
-            provider=ModelProvider.OPENAI,
-            aliases=["gpt-5", "GPT-5"],
-            context_window=400_000,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.VISION,
+                ModelCapability.THINKING, # "Extended Thinking" implied?
                 ModelCapability.STRUCTURED_OUTPUT,
+                ModelCapability.WEB_SEARCH,
             ],
             pricing=ModelPricing(
-                input_cost_per_million_tokens=1.25,
-                output_cost_per_million_tokens=10.00
+                input_cost_per_million_tokens=0.39,
+                output_cost_per_million_tokens=1.9
             ),
-            tier_availability=["paid"],
-            priority=106,
-            enabled=config.OPENAI_API_KEY is not None,
-            fallback_models=["openai/gpt-4o"]
-        ))
-
-        self.register(Model(
-            id="openai/gpt-4.1",
-            name="GPT-4.1",
-            provider=ModelProvider.OPENAI,
-            aliases=["gpt-4.1", "GPT-4.1"],
-            context_window=128_000,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.VISION,
-                ModelCapability.STRUCTURED_OUTPUT,
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=3.00,
-                output_cost_per_million_tokens=12.00
-            ),
-            tier_availability=["paid"],
-            priority=100,
-            enabled=config.OPENAI_API_KEY is not None,
-            fallback_models=["openai/gpt-4o"]
-        ))
-
-        self.register(Model(
-            id="openai/gpt-4.1-mini",
-            name="GPT-4.1 Mini",
-            provider=ModelProvider.OPENAI,
-            aliases=["gpt-4.1-mini", "GPT-4.1 Mini"],
-            context_window=128_000,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.VISION,
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=0.60,
-                output_cost_per_million_tokens=2.40
-            ),
-            tier_availability=["paid"],
-            priority=99,
-            enabled=config.OPENAI_API_KEY is not None,
-            fallback_models=["openai/gpt-4o-mini"]
-        ))
-
-        self.register(Model(
-            id="openai/gpt-4o",
-            name="GPT-4o",
-            provider=ModelProvider.OPENAI,
-            aliases=["gpt-4o", "GPT-4o"],
-            context_window=128_000,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.VISION,
-                ModelCapability.STRUCTURED_OUTPUT,
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=3.00,
-                output_cost_per_million_tokens=10.00
-            ),
-            tier_availability=["paid"],
-            priority=98,
-            enabled=config.OPENAI_API_KEY is not None,
-            fallback_models=["openai/gpt-4o-mini"]
-        ))
-
-        self.register(Model(
-            id="openai/gpt-4o-mini",
-            name="GPT-4o Mini",
-            provider=ModelProvider.OPENAI,
-            aliases=["gpt-4o-mini", "GPT-4o Mini"],
-            context_window=128_000,
-            capabilities=[
-                ModelCapability.CHAT,
-                ModelCapability.FUNCTION_CALLING,
-                ModelCapability.VISION,
-            ],
-            pricing=ModelPricing(
-                input_cost_per_million_tokens=0.15,
-            output_cost_per_million_tokens=0.60
-            ),
-            tier_availability=["free", "paid"],
-            priority=97,
-            enabled=config.OPENAI_API_KEY is not None,
+            tier_availability=["free","paid"],
+            priority=107,
+            enabled=config.OPENROUTER_API_KEY is not None,
         ))
     
     def _initialize_fallback_registry(self):
