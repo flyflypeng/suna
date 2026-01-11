@@ -228,9 +228,13 @@ async def make_llm_api_call(
     if extra_headers is not None:
         override_params["extra_headers"] = extra_headers
     
+    # append the prefix for resolved_model_name "openai/gpt-5-nano-2025-08-07"
+    if resolved_model_name.startswith("openai/"):
+        resolved_model_name = f"openrouter/openai/gpt-5-nano"
+    
     params = model_manager.get_litellm_params(resolved_model_name, **override_params)
     
-    # logger.debug(f"Parameters from model_manager.get_litellm_params: {params}")
+    logger.debug(f"Parameters from model_manager.get_litellm_params: {params}")
     
     if model_id:
         params["model_id"] = model_id
