@@ -456,7 +456,7 @@ class ModelRegistry:
 
         # --- Models via OpenRouter API ---
         self.register(Model(
-            id="anthropic/claude-sonnet-4.5",
+            id="openrouter/anthropic/claude-sonnet-4.5",
             name="Claude Sonnet 4.5",
             provider=ModelProvider.OPENROUTER,
             aliases=["claude-sonnet-4.5"],
@@ -480,7 +480,7 @@ class ModelRegistry:
         ))
 
         self.register(Model(
-            id="moonshotai/kimi-k2-0905",
+            id="openrouter/moonshotai/kimi-k2-0905",
             name="Kimi K2 0905",
             provider=ModelProvider.OPENROUTER,
             aliases=["kimi-k2-0905"],
