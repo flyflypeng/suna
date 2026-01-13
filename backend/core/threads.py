@@ -538,8 +538,7 @@ async def add_message_to_thread(
     
     # Verify ownership or team access
     if thread_data['account_id'] != user_id:
-        from core.utils.auth_utils import verify_and_authorize_thread_access
-    await verify_and_authorize_thread_access(client, thread_id, user_id)
+        await verify_and_authorize_thread_access(client, thread_id, user_id)
     
     try:
         message_result = await client.table('messages').insert({
