@@ -37,13 +37,13 @@ services:
       retries: 3
 
   backend:
-    image: ghcr.io/suna-ai/suna-backend:latest
+    image: ghcr.io/flyflypeng/suna-backend:v0.2
     platform: linux/arm64
     env_file:
       - ./backend/.env
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+   # build:
+   #   context: ./backend
+   #   dockerfile: Dockerfile
     ports:
       - "8000:8000"
     volumes:
@@ -60,13 +60,13 @@ services:
         condition: service_started
 
   worker:
-    image: ghcr.io/suna-ai/suna-backend:latest
+    image: ghcr.io/flyflypeng/suna-backend:v0.2
     platform: linux/arm64
     env_file:
       - ./backend/.env
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
+    # build:
+    #  context: ./backend
+    #  dockerfile: Dockerfile
     command: uv run dramatiq --skip-logging --processes 4 --threads 4 run_agent_background
     volumes:
       - ./backend/.env:/app/.env:ro
@@ -80,23 +80,24 @@ services:
         condition: service_healthy
 
   frontend:
+    image: ghcr.io/flyflypeng/suna-frontend:v0.1
     init: true
     env_file:
       - ./frontend/.env.local
     build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
-        - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
-        - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://localhost:8000/v1}
-        - NEXT_PUBLIC_URL=${NEXT_PUBLIC_URL:-http://localhost:9990}
-        - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
-        - NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY}
-        - NEXT_PUBLIC_ENV_MODE=${NEXT_PUBLIC_ENV_MODE:-staging}
-        - NEXT_PUBLIC_NOVU_APP_IDENTIFIER=${NEXT_PUBLIC_NOVU_APP_IDENTIFIER}
-        - NEXT_PUBLIC_DISABLE_MOBILE_ADVERTISING=${NEXT_PUBLIC_DISABLE_MOBILE_ADVERTISING}
-        - BACKEND_INTERNAL_URL=http://backend:8000
+     context: ./frontend
+     dockerfile: Dockerfile
+     args:
+       - NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL}
+       - NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+       - NEXT_PUBLIC_BACKEND_URL=${NEXT_PUBLIC_BACKEND_URL:-http://localhost:8000/v1}
+       - NEXT_PUBLIC_URL=${NEXT_PUBLIC_URL:-http://localhost:9990}
+       - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${NEXT_PUBLIC_GOOGLE_CLIENT_ID}
+       - NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY}
+       - NEXT_PUBLIC_ENV_MODE=${NEXT_PUBLIC_ENV_MODE:-staging}
+       - NEXT_PUBLIC_NOVU_APP_IDENTIFIER=${NEXT_PUBLIC_NOVU_APP_IDENTIFIER}
+       - NEXT_PUBLIC_DISABLE_MOBILE_ADVERTISING=${NEXT_PUBLIC_DISABLE_MOBILE_ADVERTISING}
+       - BACKEND_INTERNAL_URL=http://backend:8000
     ports:
       - "9990:3000"
     depends_on:
