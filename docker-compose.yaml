@@ -35,6 +35,8 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    networks:
+      - suna_network
 
   backend:
     image: ghcr.io/flyflypeng/suna-backend:v0.2
@@ -58,6 +60,8 @@ services:
         condition: service_healthy
       worker:
         condition: service_started
+    networks:
+      - suna_network
 
   worker:
     image: ghcr.io/flyflypeng/suna-backend:v0.2
@@ -78,6 +82,8 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    networks:
+      - suna_network
 
   frontend:
     image: ghcr.io/flyflypeng/suna-frontend:v0.2
@@ -102,6 +108,17 @@ services:
       - "9990:3000"
     depends_on:
       - backend
+    networks:
+      - suna_network
 
 volumes:
   redis_data:
+
+networks:
+  suna_network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.27.0.0/16
+          gateway: 172.27.0.1
