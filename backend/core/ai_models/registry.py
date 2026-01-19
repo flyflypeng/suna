@@ -454,6 +454,31 @@ class ModelRegistry:
         #     enabled=config.OPENAI_API_KEY is not None,
         # ))
 
+        # --- Self-host Models via vLLM service ---
+        self.register(Model(
+            id="openai-compatible/glm-4.7",
+            name="GLM-4.7",
+            provider=ModelProvider.OPENAI,
+            aliases=["glm-4.7"],
+            context_window=202_800,
+            max_output_tokens=202_800,
+            capabilities=[
+                ModelCapability.CHAT,
+                ModelCapability.FUNCTION_CALLING,
+                ModelCapability.THINKING, # "Extended Thinking" implied?
+                ModelCapability.STRUCTURED_OUTPUT,
+                ModelCapability.WEB_SEARCH,
+                ModelCapability.CODE_INTERPRETER,
+            ],
+            pricing=ModelPricing(
+                input_cost_per_million_tokens=0.0,
+                output_cost_per_million_tokens=0.0
+            ),
+            tier_availability=["free","paid"],
+            priority=105,
+            enabled=config.OPENAI_COMPATIBLE_API_KEY is not None,
+        ))
+
         # --- Models via OpenRouter API ---
         self.register(Model(
             id="openrouter/anthropic/claude-sonnet-4.5",
@@ -489,7 +514,6 @@ class ModelRegistry:
             capabilities=[
                 ModelCapability.CHAT,
                 ModelCapability.FUNCTION_CALLING,
-                ModelCapability.VISION,
                 ModelCapability.THINKING, # "Extended Thinking" implied?
                 ModelCapability.STRUCTURED_OUTPUT,
                 ModelCapability.WEB_SEARCH,

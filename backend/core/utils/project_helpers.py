@@ -23,7 +23,8 @@ async def generate_and_update_project_name(project_id: str, prompt: str):
         db_conn = DBConnection()
         client = await db_conn.client
 
-        model_name = "openai/gpt-5-nano-2025-08-07"
+        # model_name = "openai/gpt-5-nano-2025-08-07"
+        model_name = "openai-compatible/glm-4.7"
         
         # Use pre-loaded Lucide React icons
         relevant_icons = RELEVANT_ICONS
