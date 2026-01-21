@@ -456,6 +456,31 @@ class ModelRegistry:
 
         # --- Self-host Models via vLLM service ---
         self.register(Model(
+            id="openai-compatible/glm-4.5-air",
+            name="GLM-4.5-Air",
+            provider=ModelProvider.OPENAI,
+            aliases=["glm-4.5-air"],
+            context_window=128_000,
+            max_output_tokens=128_000,
+            capabilities=[
+                ModelCapability.CHAT,
+                ModelCapability.FUNCTION_CALLING,
+                ModelCapability.THINKING, # "Extended Thinking" implied?
+                ModelCapability.STRUCTURED_OUTPUT,
+                ModelCapability.WEB_SEARCH,
+                ModelCapability.CODE_INTERPRETER,
+            ],
+            pricing=ModelPricing(
+                input_cost_per_million_tokens=0.0,
+                output_cost_per_million_tokens=0.0
+            ),
+            tier_availability=["free","paid"],
+            priority=104,
+            enabled=config.OPENAI_COMPATIBLE_API_KEY is not None,
+        ))
+
+
+        self.register(Model(
             id="openai-compatible/glm-4.7",
             name="GLM-4.7",
             provider=ModelProvider.OPENAI,
