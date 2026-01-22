@@ -325,6 +325,8 @@ async def _wrap_streaming_response(response, model_name: str, initial_duration_m
     prompt_tokens = 0
     completion_tokens = 0
 
+    # Flag to prevent duplicate logging in finally block if exception occurs
+    logged = False
     try:
         async for chunk in response:
             # Try to capture usage from chunk if available (usually in the last chunk)
@@ -334,18 +336,8 @@ async def _wrap_streaming_response(response, model_name: str, initial_duration_m
 
             yield chunk
 
-        # Log after stream completes
-        total_duration = initial_duration_ms + (time.time() - start_time) * 1000
-        local_collector.log_llm_call(
-            model=model_name,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            duration_ms=total_duration,
-            thread_id="unknown",
-            success=True
-        )
-
     except Exception as e:
+        logged = True
         total_duration = initial_duration_ms + (time.time() - start_time) * 1000
         local_collector.log_llm_call(
             model=model_name,
@@ -359,6 +351,18 @@ async def _wrap_streaming_response(response, model_name: str, initial_duration_m
         processed_error = ErrorProcessor.process_llm_error(e)
         ErrorProcessor.log_error(processed_error)
         raise LLMError(processed_error.message)
+    finally:
+        if not logged:
+            # Log after stream completes (or is interrupted)
+            total_duration = initial_duration_ms + (time.time() - start_time) * 1000
+            local_collector.log_llm_call(
+                model=model_name,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
+                duration_ms=total_duration,
+                thread_id="unknown",
+                success=True
+            )
 
 setup_api_keys()
 setup_provider_router()
