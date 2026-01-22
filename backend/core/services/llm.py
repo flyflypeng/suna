@@ -14,6 +14,8 @@ from litellm.files.main import ModelResponse
 from core.utils.logger import logger
 from core.utils.config import config
 from core.agentpress.error_processor import ErrorProcessor
+from core.observability.local_collector import local_collector
+import time
 
 # Configure LiteLLM
 # os.environ['LITELLM_LOG'] = 'DEBUG'
@@ -245,7 +247,12 @@ async def make_llm_api_call(
     # Apply additional configurations that aren't in the model config yet
     _configure_openai_compatible(params, model_name, api_key, api_base)
     _add_tools_config(params, tools, tool_choice)
-    
+
+    start_time = time.time()
+    thread_id = "unknown" # Need to pass this locally if possible, but messages usually don't have it directly.
+    # Try to extract thread_id from logs context or pass it explicitly?
+    # For now, let's keep it simple.
+
     try:
         # Log the complete parameters being sent to LiteLLM
         # logger.debug(f"Calling LiteLLM acompletion for {resolved_model_name}")
@@ -271,25 +278,83 @@ async def make_llm_api_call(
         # logger.debug(f"LiteLLM parameters saved to: {filename}")
         
         response = await provider_router.acompletion(**params)
-        
+
+        duration = (time.time() - start_time) * 1000
+
         # For streaming responses, we need to handle errors that occur during iteration
         if hasattr(response, '__aiter__') and stream:
-            return _wrap_streaming_response(response)
-        
+            return _wrap_streaming_response(response, model_name, duration)
+
+        # Log non-streaming response
+        usage = getattr(response, 'usage', None)
+        prompt_tokens = 0
+        completion_tokens = 0
+        if usage:
+            prompt_tokens = getattr(usage, 'prompt_tokens', 0)
+            completion_tokens = getattr(usage, 'completion_tokens', 0)
+
+        local_collector.log_llm_call(
+            model=model_name,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            duration_ms=duration,
+            thread_id="unknown", # We can improve this later
+            success=True
+        )
+
         return response
-        
+
     except Exception as e:
+        duration = (time.time() - start_time) * 1000
+        local_collector.log_llm_call(
+            model=model_name,
+            prompt_tokens=0,
+            completion_tokens=0,
+            duration_ms=duration,
+            thread_id="unknown",
+            success=False
+        )
         # Use ErrorProcessor to handle the error consistently
         processed_error = ErrorProcessor.process_llm_error(e, context={"model": model_name})
         ErrorProcessor.log_error(processed_error)
         raise LLMError(processed_error.message)
 
-async def _wrap_streaming_response(response) -> AsyncGenerator:
+async def _wrap_streaming_response(response, model_name: str, initial_duration_ms: float) -> AsyncGenerator:
     """Wrap streaming response to handle errors during iteration."""
+    start_time = time.time()
+    prompt_tokens = 0
+    completion_tokens = 0
+
     try:
         async for chunk in response:
+            # Try to capture usage from chunk if available (usually in the last chunk)
+            if hasattr(chunk, 'usage') and chunk.usage:
+                prompt_tokens = getattr(chunk.usage, 'prompt_tokens', 0)
+                completion_tokens = getattr(chunk.usage, 'completion_tokens', 0)
+
             yield chunk
+
+        # Log after stream completes
+        total_duration = initial_duration_ms + (time.time() - start_time) * 1000
+        local_collector.log_llm_call(
+            model=model_name,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            duration_ms=total_duration,
+            thread_id="unknown",
+            success=True
+        )
+
     except Exception as e:
+        total_duration = initial_duration_ms + (time.time() - start_time) * 1000
+        local_collector.log_llm_call(
+            model=model_name,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
+            duration_ms=total_duration,
+            thread_id="unknown",
+            success=False
+        )
         # Convert streaming errors to processed errors
         processed_error = ErrorProcessor.process_llm_error(e)
         ErrorProcessor.log_error(processed_error)

@@ -14,6 +14,8 @@ from core.agentpress.response_processor import ResponseProcessor, ProcessorConfi
 from core.agentpress.error_processor import ErrorProcessor
 from core.services.supabase import DBConnection
 from core.utils.logger import logger
+from core.observability.local_collector import local_collector
+import time
 from langfuse.client import StatefulGenerationClient, StatefulTraceClient
 from core.services.langfuse import langfuse
 from datetime import datetime, timezone
@@ -307,7 +309,9 @@ class ThreadManager:
         latest_user_message_content: Optional[str] = None, cancellation_event: Optional[asyncio.Event] = None
     ) -> Union[Dict[str, Any], AsyncGenerator]:
         """Execute a single LLM run."""
-        
+
+        start_time = time.time()
+
         # CRITICAL: Ensure config is always a ProcessorConfig object
         if not isinstance(config, ProcessorConfig):
             logger.error(f"ERROR: config is {type(config)}, expected ProcessorConfig. Value: {config}")
@@ -548,7 +552,15 @@ class ThreadManager:
             # if not isinstance(config, ProcessorConfig):
             #     logger.error(f"Config is not ProcessorConfig! Type: {type(config)}, Value: {config}")
             #     config = ProcessorConfig()  # Fallback
-                
+
+            # Record execution metadata
+            local_collector.log_agent_execution(
+                thread_id=thread_id,
+                trace_id=str(self.trace.trace_id) if hasattr(self.trace, 'trace_id') else "unknown",
+                duration_ms=(time.time() - start_time) * 1000,
+                steps=auto_continue_state.get('count', 0)
+            )
+
             if stream and hasattr(llm_response, '__aiter__'):
                 return self.response_processor.process_streaming_response(
                     cast(AsyncGenerator, llm_response), thread_id, prepared_messages,

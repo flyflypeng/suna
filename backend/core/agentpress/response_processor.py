@@ -12,10 +12,12 @@ import json
 import re
 import uuid
 import asyncio
+import time
 from datetime import datetime, timezone
 from typing import List, Dict, Any, Optional, AsyncGenerator, Tuple, Union, Callable, Literal
 from dataclasses import dataclass
 from core.utils.logger import logger
+from core.observability.local_collector import local_collector
 from core.agentpress.tool import ToolResult
 from core.agentpress.tool_registry import ToolRegistry
 from core.agentpress.xml_tool_parser import XMLToolParser
@@ -1606,6 +1608,7 @@ class ResponseProcessor:
     # Tool execution methods
     async def _execute_tool(self, tool_call: Dict[str, Any]) -> ToolResult:
         """Execute a single tool call and return the result."""
+        start_time = time.time()
         span = self.trace.span(name=f"execute_tool.{tool_call['function_name']}", input=tool_call["arguments"])
         function_name = "unknown"
         try:
@@ -1681,9 +1684,28 @@ class ResponseProcessor:
                     result = ToolResult(success=False, output=f"Tool returned invalid result type: {type(result)}")
 
             span.end(status_message="tool_executed", output=str(result))
+
+            duration = (time.time() - start_time) * 1000
+            local_collector.log_tool_execution(
+                tool_name=function_name, # Can we get the tool class name? tool_fn might have it.
+                method_name=function_name,
+                duration_ms=duration,
+                thread_id="unknown", # We don't have thread_id here easily without passing it down
+                success=True
+            )
+
             return result
 
         except Exception as e:
+            duration = (time.time() - start_time) * 1000
+            local_collector.log_tool_execution(
+                tool_name=function_name,
+                method_name=function_name,
+                duration_ms=duration,
+                thread_id="unknown",
+                success=False
+            )
+
             logger.error(f"❌ CRITICAL ERROR executing tool {function_name}: {str(e)}")
             logger.error(f"❌ Error type: {type(e).__name__}")
             logger.error(f"❌ Tool call data: {tool_call}")
