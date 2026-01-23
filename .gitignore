@@ -260,3 +260,4 @@ apps/mobile/app-example
 # OpenNext build output
 frontend/.open-next/
 frontend/.next/
+.grepai/

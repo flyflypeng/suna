@@ -63,4 +63,34 @@ class LocalMetricsCollector:
             "steps": steps
         })
 
+    def log_memory_event(self, action: str, duration_ms: float, details: Dict[str, Any]):
+        """
+        Log memory related events (retrieval, storage).
+        """
+        self.log_event("agent_memory", {
+            "action": action,
+            "duration_ms": duration_ms,
+            "details": details
+        })
+
+    def log_sandbox_event(self, action: str, duration_ms: float, details: Dict[str, Any]):
+        """
+        Log sandbox related events (create, execute, delete).
+        """
+        self.log_event("agent_sandbox", {
+            "action": action,
+            "duration_ms": duration_ms,
+            "details": details
+        })
+
+    def log_context_event(self, action: str, duration_ms: float, details: Dict[str, Any]):
+        """
+        Log context processing related events (compression, pruning).
+        """
+        self.log_event("agent_context", {
+            "action": action,
+            "duration_ms": duration_ms,
+            "details": details
+        })
+
 local_collector = LocalMetricsCollector()

@@ -3,7 +3,9 @@ from dotenv import load_dotenv
 from core.utils.logger import logger
 from core.utils.config import config
 from core.utils.config import Configuration
+from core.observability.local_collector import local_collector
 import asyncio
+import time
 
 load_dotenv()
 
@@ -33,7 +35,7 @@ daytona = AsyncDaytona(daytona_config)
 
 async def get_or_start_sandbox(sandbox_id: str) -> AsyncSandbox:
     """Retrieve a sandbox by ID, check its state, and start it if needed."""
-    
+    start_time = time.time()
     logger.info(f"Getting or starting sandbox with ID: {sandbox_id}")
 
     try:
@@ -59,9 +61,13 @@ async def get_or_start_sandbox(sandbox_id: str) -> AsyncSandbox:
                 raise e
         
         logger.info(f"Sandbox {sandbox_id} is ready")
+        duration = (time.time() - start_time) * 1000
+        local_collector.log_sandbox_event("get_or_start", duration, {"sandbox_id": sandbox_id, "state": str(sandbox.state)})
         return sandbox
         
     except Exception as e:
+        duration = (time.time() - start_time) * 1000
+        local_collector.log_sandbox_event("get_or_start_exception", duration, {"sandbox_id": sandbox_id, "error": str(e)})
         logger.error(f"Error retrieving or starting sandbox: {str(e)}")
         raise e
 
@@ -81,53 +87,61 @@ async def start_supervisord_session(sandbox: AsyncSandbox):
 
 async def create_sandbox(password: str, project_id: str = None) -> AsyncSandbox:
     """Create a new sandbox with all required services configured and running."""
-    
+    start_time = time.time()
     logger.info("Creating new Daytona sandbox environment")
     # logger.debug("Configuring sandbox with snapshot and environment variables")
     
-    labels = None
-    if project_id:
-        # logger.debug(f"Using sandbox_id as label: {project_id}")
-        labels = {'id': project_id}
+    try:
+        labels = None
+        if project_id:
+            # logger.debug(f"Using sandbox_id as label: {project_id}")
+            labels = {'id': project_id}
+            
+        params = CreateSandboxFromSnapshotParams(
+            snapshot=Configuration.SANDBOX_SNAPSHOT_NAME,
+            public=True,
+            labels=labels,
+            env_vars={
+                "CHROME_PERSISTENT_SESSION": "true",
+                "RESOLUTION": "1048x768x24",
+                "RESOLUTION_WIDTH": "1048",
+                "RESOLUTION_HEIGHT": "768",
+                "VNC_PASSWORD": password,
+                "ANONYMIZED_TELEMETRY": "false",
+                "CHROME_PATH": "",
+                "CHROME_USER_DATA": "",
+                "CHROME_DEBUGGING_PORT": "9222",
+                "CHROME_DEBUGGING_HOST": "localhost",
+                "CHROME_CDP": ""
+            },
+            # resources=Resources(
+            #     cpu=2,
+            #     memory=4,
+            #     disk=5,
+            # ),
+            auto_stop_interval=15,
+            auto_archive_interval=30,
+        )
         
-    params = CreateSandboxFromSnapshotParams(
-        snapshot=Configuration.SANDBOX_SNAPSHOT_NAME,
-        public=True,
-        labels=labels,
-        env_vars={
-            "CHROME_PERSISTENT_SESSION": "true",
-            "RESOLUTION": "1048x768x24",
-            "RESOLUTION_WIDTH": "1048",
-            "RESOLUTION_HEIGHT": "768",
-            "VNC_PASSWORD": password,
-            "ANONYMIZED_TELEMETRY": "false",
-            "CHROME_PATH": "",
-            "CHROME_USER_DATA": "",
-            "CHROME_DEBUGGING_PORT": "9222",
-            "CHROME_DEBUGGING_HOST": "localhost",
-            "CHROME_CDP": ""
-        },
-        # resources=Resources(
-        #     cpu=2,
-        #     memory=4,
-        #     disk=5,
-        # ),
-        auto_stop_interval=15,
-        auto_archive_interval=30,
-    )
-    
-    # Create the sandbox
-    sandbox = await daytona.create(params)
-    logger.info(f"Sandbox created with ID: {sandbox.id}")
-    
-    # Start supervisord in a session for new sandbox
-    await start_supervisord_session(sandbox)
-    
-    logger.info(f"Sandbox environment successfully initialized")
-    return sandbox
+        # Create the sandbox
+        sandbox = await daytona.create(params)
+        logger.info(f"Sandbox created with ID: {sandbox.id}")
+        
+        # Start supervisord in a session for new sandbox
+        await start_supervisord_session(sandbox)
+        
+        logger.info(f"Sandbox environment successfully initialized")
+        duration = (time.time() - start_time) * 1000
+        local_collector.log_sandbox_event("create_sandbox", duration, {"sandbox_id": sandbox.id})
+        return sandbox
+    except Exception as e:
+        duration = (time.time() - start_time) * 1000
+        local_collector.log_sandbox_event("create_sandbox_exception", duration, {"error": str(e)})
+        raise e
 
 async def delete_sandbox(sandbox_id: str) -> bool:
     """Delete a sandbox by its ID."""
+    start_time = time.time()
     logger.info(f"Deleting sandbox with ID: {sandbox_id}")
 
     try:
@@ -138,7 +152,11 @@ async def delete_sandbox(sandbox_id: str) -> bool:
         await daytona.delete(sandbox)
         
         logger.info(f"Successfully deleted sandbox {sandbox_id}")
+        duration = (time.time() - start_time) * 1000
+        local_collector.log_sandbox_event("delete_sandbox", duration, {"sandbox_id": sandbox_id})
         return True
     except Exception as e:
+        duration = (time.time() - start_time) * 1000
+        local_collector.log_sandbox_event("delete_sandbox_exception", duration, {"sandbox_id": sandbox_id, "error": str(e)})
         logger.error(f"Error deleting sandbox {sandbox_id}: {str(e)}")
         raise e

@@ -7,12 +7,14 @@ reaching the context window limitations of LLM models.
 
 import json
 import os
+import time
 from typing import List, Dict, Any, Optional, Union
 
 from litellm.utils import token_counter
 from anthropic import Anthropic
 from core.services.supabase import DBConnection
 from core.utils.logger import logger
+from core.observability.local_collector import local_collector
 from core.ai_models import model_manager
 from core.agentpress.prompt_caching import apply_anthropic_caching_strategy
 
@@ -810,6 +812,7 @@ class ContextManager:
         
         Caching should be applied ONCE at the end by the caller, not during compression.
         """
+        start_time = time.time()
         # Get model-specific token limits from constants
         context_window = model_manager.get_context_window(llm_model)
         
@@ -942,6 +945,8 @@ class ContextManager:
         elif compressed_total > max_tokens:
             logger.warning(f"Further compression needed: {compressed_total} > {max_tokens}")
             # Recursive call - will handle its own last_usage update
+            duration = (time.time() - start_time) * 1000
+            local_collector.log_context_event("compress_messages_recurse", duration, {"current_tokens": compressed_total})
             return await self.compress_messages(
                 result, llm_model, max_tokens, 
                 token_threshold // 2, max_iterations - 1, 
@@ -955,6 +960,8 @@ class ContextManager:
             logger.info(f"After message omission to target: {compressed_total} tokens")
 
         logger.info(f"✨ Final compression complete: {compressed_total} tokens (target: {target_tokens}, max: {max_tokens})")
+        duration = (time.time() - start_time) * 1000
+        local_collector.log_context_event("compress_messages_complete", duration, {"final_tokens": compressed_total, "original_tokens": uncompressed_total_token_count})
         return self.middle_out_messages(result)
     
     async def compress_messages_by_omitting_messages(
@@ -975,6 +982,7 @@ class ContextManager:
             removal_batch_size: Number of messages to remove per iteration
             min_messages_to_keep: Minimum number of messages to preserve
         """
+        start_time = time.time()
         if not messages:
             return messages
             
@@ -1029,6 +1037,8 @@ class ContextManager:
         
         logger.info(f"Context compression (omit): {initial_token_count} -> {final_token_count} tokens ({len(messages)} -> {len(final_messages)} messages)")
             
+        duration = (time.time() - start_time) * 1000
+        local_collector.log_context_event("omit_messages_complete", duration, {"final_tokens": final_token_count, "original_tokens": initial_token_count})
         return final_messages
     
     def middle_out_messages(self, messages: List[Dict[str, Any]], max_messages: int = 320) -> List[Dict[str, Any]]:

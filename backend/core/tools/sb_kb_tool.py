@@ -1,4 +1,5 @@
 import asyncio
+import time
 from typing import Optional, List
 from core.agentpress.tool import ToolResult, openapi_schema, tool_metadata
 from core.sandbox.tool_base import SandboxToolsBase
@@ -6,6 +7,7 @@ from core.agentpress.thread_manager import ThreadManager
 from core.utils.config import config
 from core.knowledge_base.validation import FileNameValidator, ValidationError
 from core.utils.logger import logger
+from core.observability.local_collector import local_collector
 
 @tool_metadata(
     display_name="Knowledge Base",
@@ -54,6 +56,7 @@ class SandboxKbTool(SandboxToolsBase):
         }
     })
     async def init_kb(self, sync_global_knowledge_base: bool = False) -> ToolResult:
+        start_ts = time.time()
         try:
             await self._ensure_sandbox()
             
@@ -79,6 +82,8 @@ class SandboxKbTool(SandboxToolsBase):
                         else:
                             result_data["sync_warning"] = f"Knowledge base sync failed: {sync_result.output}"
                     
+                    duration = (time.time() - start_ts) * 1000
+                    local_collector.log_memory_event("init_kb", duration, {"success": True, "details": result_data})
                     return self.success_response(result_data)
                 else:
                     # Update needed
@@ -120,9 +125,13 @@ class SandboxKbTool(SandboxToolsBase):
                 else:
                     result_data["sync_warning"] = f"Knowledge base sync failed: {sync_result.output}"
             
+            duration = (time.time() - start_ts) * 1000
+            local_collector.log_memory_event("init_kb", duration, {"success": True, "details": result_data})
             return self.success_response(result_data)
             
         except Exception as e:
+            duration = (time.time() - start_ts) * 1000
+            local_collector.log_memory_event("init_kb_failed", duration, {"error": str(e)})
             return self.fail_response(f"Error installing kb: {str(e)}")
 
     @openapi_schema({
@@ -148,6 +157,7 @@ class SandboxKbTool(SandboxToolsBase):
         }
     })
     async def search_files(self, path: str, queries: List[str]) -> ToolResult:
+        start_time = time.time()
         try:
             if not queries:
                 return self.fail_response("At least one query is required for search.")
@@ -159,8 +169,22 @@ class SandboxKbTool(SandboxToolsBase):
             result = await self._execute_kb_command(search_command)
             
             if result["exit_code"] != 0:
+                duration = (time.time() - start_time) * 1000
+                local_collector.log_memory_event("search_files_failed", duration, {
+                    "path": path,
+                    "queries": queries,
+                    "exit_code": result["exit_code"],
+                    "output": result["output"]
+                })
                 return self.fail_response(f"Search failed: {result['output']}")
             
+            duration = (time.time() - start_time) * 1000
+            local_collector.log_memory_event("search_files", duration, {
+                "path": path,
+                "queries": queries,
+                "exit_code": result["exit_code"]
+            })
+
             return self.success_response({
                 "search_results": result["output"],
                 "path": path,
@@ -169,6 +193,12 @@ class SandboxKbTool(SandboxToolsBase):
             })
             
         except Exception as e:
+            duration = (time.time() - start_time) * 1000
+            local_collector.log_memory_event("search_files_exception", duration, {
+                "path": path,
+                "queries": queries,
+                "error": str(e)
+            })
             return self.fail_response(f"Error performing search: {str(e)}")
 
     @openapi_schema({

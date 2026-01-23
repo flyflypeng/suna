@@ -6,6 +6,7 @@ from uuid import uuid4
 from core.agentpress.tool import ToolResult, openapi_schema, tool_metadata
 from core.sandbox.tool_base import SandboxToolsBase
 from core.agentpress.thread_manager import ThreadManager
+from core.observability.local_collector import local_collector
 
 @tool_metadata(
     display_name="Terminal & Commands",
@@ -89,6 +90,7 @@ class SandboxShellTool(SandboxToolsBase):
         blocking: bool = False,
         timeout: int = 60
     ) -> ToolResult:
+        start_ts = time.time()
         try:
             # Ensure sandbox is initialized
             await self._ensure_sandbox()
@@ -152,6 +154,14 @@ class SandboxShellTool(SandboxToolsBase):
                 # Kill the session after capture
                 await self._execute_raw_command(f"tmux kill-session -t {session_name}")
                 
+                duration = (time.time() - start_ts) * 1000
+                local_collector.log_sandbox_event("execute_command", duration, {
+                    "command": command, 
+                    "blocking": True, 
+                    "success": True,
+                    "session_name": session_name
+                })
+
                 return self.success_response({
                     "output": final_output,
                     "session_name": session_name,
@@ -163,6 +173,14 @@ class SandboxShellTool(SandboxToolsBase):
                 await self._execute_raw_command(f'tmux send-keys -t {session_name} "{wrapped_command}" Enter')
                 
                 # For non-blocking, just return immediately
+                duration = (time.time() - start_ts) * 1000
+                local_collector.log_sandbox_event("execute_command", duration, {
+                    "command": command, 
+                    "blocking": False, 
+                    "success": True,
+                    "session_name": session_name
+                })
+
                 return self.success_response({
                     "session_name": session_name,
                     "cwd": cwd,
@@ -177,6 +195,13 @@ class SandboxShellTool(SandboxToolsBase):
                     await self._execute_raw_command(f"tmux kill-session -t {session_name}")
                 except:
                     pass
+            
+            duration = (time.time() - start_ts) * 1000
+            local_collector.log_sandbox_event("execute_command_exception", duration, {
+                "command": command, 
+                "success": False, 
+                "error": str(e)
+            })
             return self.fail_response(f"Error executing command: {str(e)}")
 
     async def _execute_raw_command(self, command: str) -> Dict[str, Any]:
