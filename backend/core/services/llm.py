@@ -15,6 +15,7 @@ from core.utils.logger import logger
 from core.utils.config import config
 from core.agentpress.error_processor import ErrorProcessor
 from core.observability.local_collector import local_collector
+from core.utils.token_counter import TokenCounter
 import time
 
 # Configure LiteLLM
@@ -204,6 +205,7 @@ async def make_llm_api_call(
     model_id: Optional[str] = None,
     headers: Optional[Dict[str, str]] = None,
     extra_headers: Optional[Dict[str, str]] = None,
+    token_breakdown: Optional[Dict[str, int]] = None,
 ) -> Union[Dict[str, Any], AsyncGenerator, ModelResponse]:
     """Make an API call to a language model using LiteLLM."""
     logger.info(f"Making LLM API call to model: {model_name} with {len(messages)} messages")
@@ -283,7 +285,7 @@ async def make_llm_api_call(
 
         # For streaming responses, we need to handle errors that occur during iteration
         if hasattr(response, '__aiter__') and stream:
-            return _wrap_streaming_response(response, model_name, duration)
+            return _wrap_streaming_response(response, model_name, duration, token_breakdown)
 
         # Log non-streaming response
         usage = getattr(response, 'usage', None)
@@ -292,6 +294,10 @@ async def make_llm_api_call(
         if usage:
             prompt_tokens = getattr(usage, 'prompt_tokens', 0)
             completion_tokens = getattr(usage, 'completion_tokens', 0)
+        
+        # Fallback to calculated breakdown for prompt tokens if usage is missing
+        if prompt_tokens == 0 and token_breakdown:
+            prompt_tokens = sum(token_breakdown.values())
 
         local_collector.log_llm_call(
             model=model_name,
@@ -299,27 +305,35 @@ async def make_llm_api_call(
             completion_tokens=completion_tokens,
             duration_ms=duration,
             thread_id="unknown", # We can improve this later
-            success=True
+            success=True,
+            token_breakdown=token_breakdown
         )
 
         return response
 
     except Exception as e:
         duration = (time.time() - start_time) * 1000
+        
+        # Fallback to calculated breakdown for prompt tokens
+        prompt_tokens = 0
+        if token_breakdown:
+            prompt_tokens = sum(token_breakdown.values())
+            
         local_collector.log_llm_call(
             model=model_name,
-            prompt_tokens=0,
+            prompt_tokens=prompt_tokens,
             completion_tokens=0,
             duration_ms=duration,
             thread_id="unknown",
-            success=False
+            success=False,
+            token_breakdown=token_breakdown
         )
         # Use ErrorProcessor to handle the error consistently
         processed_error = ErrorProcessor.process_llm_error(e, context={"model": model_name})
         ErrorProcessor.log_error(processed_error)
         raise LLMError(processed_error.message)
 
-async def _wrap_streaming_response(response, model_name: str, initial_duration_ms: float) -> AsyncGenerator:
+async def _wrap_streaming_response(response, model_name: str, initial_duration_ms: float, token_breakdown: Optional[Dict[str, int]] = None) -> AsyncGenerator:
     """Wrap streaming response to handle errors during iteration."""
     start_time = time.time()
     prompt_tokens = 0
@@ -327,6 +341,7 @@ async def _wrap_streaming_response(response, model_name: str, initial_duration_m
 
     # Flag to prevent duplicate logging in finally block if exception occurs
     logged = False
+    accumulated_content = []
     try:
         async for chunk in response:
             # Try to capture usage from chunk if available (usually in the last chunk)
@@ -334,18 +349,31 @@ async def _wrap_streaming_response(response, model_name: str, initial_duration_m
                 prompt_tokens = getattr(chunk.usage, 'prompt_tokens', 0)
                 completion_tokens = getattr(chunk.usage, 'completion_tokens', 0)
 
+            # Capture content for fallback token counting
+            if hasattr(chunk, 'choices') and chunk.choices:
+                delta = chunk.choices[0].delta
+                print(f"DEBUG: chunk content: {getattr(delta, 'content', 'MISSING')}")
+                if hasattr(delta, 'content') and delta.content:
+                    accumulated_content.append(delta.content)
+
             yield chunk
 
     except Exception as e:
         logged = True
         total_duration = initial_duration_ms + (time.time() - start_time) * 1000
+        
+        # Fallback to calculated breakdown for prompt tokens if usage is missing
+        if prompt_tokens == 0 and token_breakdown:
+            prompt_tokens = sum(token_breakdown.values())
+            
         local_collector.log_llm_call(
             model=model_name,
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             duration_ms=total_duration,
             thread_id="unknown",
-            success=False
+            success=False,
+            token_breakdown=token_breakdown
         )
         # Convert streaming errors to processed errors
         processed_error = ErrorProcessor.process_llm_error(e)
@@ -353,6 +381,16 @@ async def _wrap_streaming_response(response, model_name: str, initial_duration_m
         raise LLMError(processed_error.message)
     finally:
         if not logged:
+            # Fallback to calculated breakdown for prompt tokens if usage is missing
+            if prompt_tokens == 0 and token_breakdown:
+                prompt_tokens = sum(token_breakdown.values())
+
+            # Fallback to estimated completion tokens if usage is missing
+            if completion_tokens == 0 and accumulated_content:
+                full_content = "".join(accumulated_content)
+                counter = TokenCounter(model=model_name)
+                completion_tokens = counter.count_tokens(full_content)
+
             # Log after stream completes (or is interrupted)
             total_duration = initial_duration_ms + (time.time() - start_time) * 1000
             local_collector.log_llm_call(
@@ -361,7 +399,8 @@ async def _wrap_streaming_response(response, model_name: str, initial_duration_m
                 completion_tokens=completion_tokens,
                 duration_ms=total_duration,
                 thread_id="unknown",
-                success=True
+                success=True,
+                token_breakdown=token_breakdown
             )
 
 setup_api_keys()

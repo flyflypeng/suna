@@ -10,7 +10,7 @@ from core.agentpress.prompt_caching import apply_anthropic_caching_strategy, val
 from core.agentpress.tool import Tool
 from core.agentpress.tool_registry import ToolRegistry
 from core.agentpress.context_manager import ContextManager
-from core.agentpress.response_processor import ResponseProcessor, ProcessorConfig
+from core.agentpress.response_processor import ResponseProcessor, ProcessorConfig, calculate_token_breakdown
 from core.agentpress.error_processor import ErrorProcessor
 from core.services.supabase import DBConnection
 from core.utils.logger import logger
@@ -530,6 +530,9 @@ class ThreadManager:
             # The LLM's usage.prompt_tokens (reported after the call) is the accurate source of truth
             logger.info(f"📤 Sending {len(prepared_messages)} prepared messages to LLM")
 
+            # Calculate token breakdown for logging purposes
+            token_breakdown = calculate_token_breakdown(prepared_messages, llm_model)
+
             # Make LLM call
             try:
                 llm_response = await make_llm_api_call(
@@ -538,7 +541,8 @@ class ThreadManager:
                     max_tokens=llm_max_tokens,
                     tools=openapi_tool_schemas,
                     tool_choice=tool_choice if config.native_tool_calling else "none",
-                    stream=stream
+                    stream=stream,
+                    token_breakdown=token_breakdown
                 )
             except LLMError as e:
                 return {"type": "status", "status": "error", "message": str(e)}

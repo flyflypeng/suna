@@ -36,14 +36,15 @@ class LocalMetricsCollector:
         except Exception as e:
             logger.error(f"Failed to write local metrics: {e}")
 
-    def log_llm_call(self, model: str, prompt_tokens: int, completion_tokens: int, duration_ms: float, thread_id: str, success: bool = True):
+    def log_llm_call(self, model: str, prompt_tokens: int, completion_tokens: int, duration_ms: float, thread_id: str, success: bool = True, token_breakdown: Optional[Dict[str, int]] = None):
         self.log_event("llm_call", {
             "model": model,
             "prompt_tokens": prompt_tokens,
             "completion_tokens": completion_tokens,
             "duration_ms": duration_ms,
             "thread_id": thread_id,
-            "success": success
+            "success": success,
+            "token_breakdown": token_breakdown
         })
 
     def log_tool_execution(self, tool_name: str, method_name: str, duration_ms: float, thread_id: str, success: bool = True):

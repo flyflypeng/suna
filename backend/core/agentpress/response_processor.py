@@ -30,6 +30,109 @@ from core.utils.json_helpers import (
 )
 from litellm import token_counter
 
+def calculate_token_breakdown(prompt_messages: List[Dict[str, Any]], llm_model: str) -> Dict[str, int]:
+    """
+    Calculate token breakdown by component using simple heuristics.
+    
+    Since prompt_messages are formatted for LLM API without metadata,
+    we use heuristics based on message structure and content patterns.
+    
+    Args:
+        prompt_messages: List of messages sent to the LLM
+        llm_model: The model being used
+        
+    Returns:
+        Dictionary with token counts by component
+    """
+    try:
+        from core.utils.token_counter import TokenCounter
+        counter = TokenCounter(llm_model)
+        
+        breakdown = {
+            'system_prompt': 0,
+            'tools': 0,
+            'conversation_history': 0,
+            'workspace_context': 0,
+            'search_results': 0,
+            'user_input': 0
+        }
+        
+        # Track if we've seen the first user message (likely the current input)
+        user_message_count = 0
+        
+        for idx, message in enumerate(prompt_messages):
+            role = message.get('role', '')
+            content = message.get('content', '')
+            
+            # Count tokens for this message
+            if isinstance(content, str):
+                token_count = counter.count_tokens(content)
+            elif isinstance(content, list):
+                # Handle multi-part content (e.g., cache blocks, vision)
+                token_count = 0
+                for part in content:
+                    if isinstance(part, dict):
+                        if 'text' in part:
+                            token_count += counter.count_tokens(part['text'])
+                        elif 'type' in part and part['type'] == 'text' and 'text' in part:
+                            token_count += counter.count_tokens(part['text'])
+            else:
+                token_count = 0
+            
+            # Categorize by role and heuristics
+            if role == 'system':
+                breakdown['system_prompt'] += token_count
+                
+            elif role == 'user':
+                user_message_count += 1
+                # Heuristic: Very large user messages (>5000 tokens) are likely workspace/search context
+                # Last user message is likely the actual user input
+                if token_count > 5000:
+                    # Large content is likely workspace context or search results
+                    # Check for code patterns to distinguish
+                    content_str = str(content).lower()
+                    if any(keyword in content_str for keyword in ['search', 'found', 'results']):
+                        breakdown['search_results'] += token_count
+                    else:
+                        breakdown['workspace_context'] += token_count
+                elif idx == len(prompt_messages) - 1 or (idx == len(prompt_messages) - 2 and prompt_messages[-1].get('role') == 'assistant'):
+                    # Last user message or second-to-last if last is assistant
+                    breakdown['user_input'] += token_count
+                else:
+                    # Historical user messages
+                    breakdown['conversation_history'] += token_count
+                    
+            elif role == 'assistant':
+                # All assistant messages are conversation history
+                breakdown['conversation_history'] += token_count
+                
+            elif role == 'tool':
+                # Tool results - check content for search indicators
+                content_str = str(content).lower()
+                if any(keyword in content_str for keyword in ['search', 'found', 'results', 'query']):
+                    breakdown['search_results'] += token_count
+                else:
+                    breakdown['workspace_context'] += token_count
+        
+        # Estimate tool definitions (not in messages, added separately by LiteLLM)
+        # Rough estimate: ~500-2000 tokens for tool schemas
+        # We'll leave this at 0 for now since we can't accurately measure it
+        breakdown['tools'] = 0
+        
+        logger.info(f"Token breakdown calculated: {breakdown}")
+        return breakdown
+        
+    except Exception as e:
+        logger.warning(f"Failed to calculate token breakdown: {e}", exc_info=True)
+        return {
+            'system_prompt': 0,
+            'tools': 0,
+            'conversation_history': 0,
+            'workspace_context': 0,
+            'search_results': 0,
+            'user_input': 0
+        }
+
 # Type alias for XML result adding strategy
 XmlAddingStrategy = Literal["user_message", "assistant_message", "inline_edit"]
 
@@ -166,94 +269,7 @@ class ResponseProcessor:
         Returns:
             Dictionary with token counts by component
         """
-        try:
-            from core.utils.token_counter import TokenCounter
-            counter = TokenCounter(llm_model)
-            
-            breakdown = {
-                'system_prompt': 0,
-                'tools': 0,
-                'conversation_history': 0,
-                'workspace_context': 0,
-                'search_results': 0,
-                'user_input': 0
-            }
-            
-            # Track if we've seen the first user message (likely the current input)
-            user_message_count = 0
-            
-            for idx, message in enumerate(prompt_messages):
-                role = message.get('role', '')
-                content = message.get('content', '')
-                
-                # Count tokens for this message
-                if isinstance(content, str):
-                    token_count = counter.count_tokens(content)
-                elif isinstance(content, list):
-                    # Handle multi-part content (e.g., cache blocks, vision)
-                    token_count = 0
-                    for part in content:
-                        if isinstance(part, dict):
-                            if 'text' in part:
-                                token_count += counter.count_tokens(part['text'])
-                            elif 'type' in part and part['type'] == 'text' and 'text' in part:
-                                token_count += counter.count_tokens(part['text'])
-                else:
-                    token_count = 0
-                
-                # Categorize by role and heuristics
-                if role == 'system':
-                    breakdown['system_prompt'] += token_count
-                    
-                elif role == 'user':
-                    user_message_count += 1
-                    # Heuristic: Very large user messages (>5000 tokens) are likely workspace/search context
-                    # Last user message is likely the actual user input
-                    if token_count > 5000:
-                        # Large content is likely workspace context or search results
-                        # Check for code patterns to distinguish
-                        content_str = str(content).lower()
-                        if any(keyword in content_str for keyword in ['search', 'found', 'results']):
-                            breakdown['search_results'] += token_count
-                        else:
-                            breakdown['workspace_context'] += token_count
-                    elif idx == len(prompt_messages) - 1 or (idx == len(prompt_messages) - 2 and prompt_messages[-1].get('role') == 'assistant'):
-                        # Last user message or second-to-last if last is assistant
-                        breakdown['user_input'] += token_count
-                    else:
-                        # Historical user messages
-                        breakdown['conversation_history'] += token_count
-                        
-                elif role == 'assistant':
-                    # All assistant messages are conversation history
-                    breakdown['conversation_history'] += token_count
-                    
-                elif role == 'tool':
-                    # Tool results - check content for search indicators
-                    content_str = str(content).lower()
-                    if any(keyword in content_str for keyword in ['search', 'found', 'results', 'query']):
-                        breakdown['search_results'] += token_count
-                    else:
-                        breakdown['workspace_context'] += token_count
-            
-            # Estimate tool definitions (not in messages, added separately by LiteLLM)
-            # Rough estimate: ~500-2000 tokens for tool schemas
-            # We'll leave this at 0 for now since we can't accurately measure it
-            breakdown['tools'] = 0
-            
-            logger.info(f"Token breakdown calculated: {breakdown}")
-            return breakdown
-            
-        except Exception as e:
-            logger.warning(f"Failed to calculate token breakdown: {e}", exc_info=True)
-            return {
-                'system_prompt': 0,
-                'tools': 0,
-                'conversation_history': 0,
-                'workspace_context': 0,
-                'search_results': 0,
-                'user_input': 0
-            }
+        return calculate_token_breakdown(prompt_messages, llm_model)
     
     def _serialize_model_response(self, model_response) -> Dict[str, Any]:
         """Convert a LiteLLM ModelResponse object to a JSON-serializable dictionary.

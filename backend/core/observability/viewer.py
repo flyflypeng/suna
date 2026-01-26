@@ -50,7 +50,10 @@ def analyze_tools(logs):
         print(f"{name:<40} {stats['count']:<10} {avg_duration:<20.2f} {stats['errors']:<10}")
 
 def analyze_llm(logs):
-    llm_stats = defaultdict(lambda: {"count": 0, "total_duration": 0, "total_tokens": 0, "errors": 0})
+    llm_stats = defaultdict(lambda: {
+        "count": 0, "total_duration": 0, "total_tokens": 0, "errors": 0,
+        "breakdown": defaultdict(int)
+    })
 
     for log in logs:
         if log["event_type"] == "llm_call":
@@ -59,6 +62,12 @@ def analyze_llm(logs):
             duration = data.get("duration_ms", 0)
             success = data.get("success", True)
             tokens = data.get("prompt_tokens", 0) + data.get("completion_tokens", 0)
+
+            # Aggregate breakdown if available
+            breakdown = data.get("token_breakdown")
+            if breakdown:
+                for k, v in breakdown.items():
+                    llm_stats[model]["breakdown"][k] += v
 
             llm_stats[model]["count"] += 1
             llm_stats[model]["total_duration"] += duration
@@ -73,6 +82,15 @@ def analyze_llm(logs):
         avg_duration = stats["total_duration"] / stats["count"] if stats["count"] > 0 else 0
         avg_tokens = stats["total_tokens"] / stats["count"] if stats["count"] > 0 else 0
         print(f"{name:<40} {stats['count']:<10} {avg_duration:<20.2f} {avg_tokens:<15.0f} {stats['errors']:<10}")
+        
+        # Display breakdown if available
+        if stats["breakdown"] and stats["total_tokens"] > 0:
+            print(f"  Token Breakdown (Avg per call):")
+            for k, v in sorted(stats["breakdown"].items(), key=lambda x: x[1], reverse=True):
+                 avg_k = v / stats["count"]
+                 pct = (v / stats["total_tokens"]) * 100
+                 print(f"    - {k:<25} {avg_k:<10.0f} ({pct:.1f}%)")
+            print()
 
 def analyze_agent(logs):
     agent_logs = [l for l in logs if l["event_type"] == "agent_execution"]
