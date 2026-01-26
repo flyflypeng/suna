@@ -16,7 +16,9 @@ class LocalMetricsCollector:
     def __new__(cls, *args, **kwargs):
         if not cls._instance:
             cls._instance = super(LocalMetricsCollector, cls).__new__(cls, *args, **kwargs)
-            cls._instance.log_file = os.path.join(os.getcwd(), "metrics_logs.jsonl")
+            logs_dir = os.path.join(os.getcwd(), "logs")
+            os.makedirs(logs_dir, exist_ok=True)
+            cls._instance.log_file = os.path.join(logs_dir, "metrics_logs.jsonl")
         return cls._instance
 
     def set_context(self, trace_id: str):
