@@ -302,7 +302,8 @@ def analyze_performance(logs):
 
 def main():
     parser = argparse.ArgumentParser(description="View local observability metrics")
-    parser.add_argument("--file", default="/home/flyflypeng/agent/suna/logs/research-top20-ai-researcher-log.json", help="Path to jsonl log file")
+    parser.add_argument("--file", default="metrics_logs.jsonl", help="Path to jsonl log file")
+    parser.add_argument("--trace-id", help="Filter by specific trace ID")
     args = parser.parse_args()
 
     global LOG_FILE
@@ -314,13 +315,64 @@ def main():
         print("No logs found.")
         return
 
-    analyze_performance(logs)
-    analyze_agent(logs)
-    analyze_context(logs)
-    analyze_memory(logs)
-    analyze_sandbox(logs)
-    analyze_llm(logs)
-    analyze_tools(logs)
+    # Group logs by trace_id
+    traces = defaultdict(list)
+    for log in logs:
+        # Default to 'unknown' if trace_id is missing (for backward compatibility)
+        trace_id = log.get("trace_id", "unknown")
+        traces[trace_id].append(log)
+
+    # If trace_id is specified, show only that trace
+    if args.trace_id:
+        if args.trace_id not in traces:
+            print(f"Trace ID '{args.trace_id}' not found.")
+            return
+        
+        print(f"\n{'='*80}")
+        print(f"ANALYSIS FOR TRACE: {args.trace_id}")
+        print(f"{'='*80}")
+        trace_logs = traces[args.trace_id]
+        analyze_performance(trace_logs)
+        analyze_agent(trace_logs)
+        analyze_context(trace_logs)
+        analyze_memory(trace_logs)
+        analyze_sandbox(trace_logs)
+        analyze_llm(trace_logs)
+        analyze_tools(trace_logs)
+        return
+
+    # Otherwise, show summary of all traces and then details for each
+    print(f"\nFound {len(traces)} traces:")
+    print(f"{'Trace ID':<40} {'Events':<10} {'Start Time':<30} {'Duration (s)':<15}")
+    print("-" * 100)
+    
+    sorted_trace_ids = []
+    
+    for trace_id, trace_logs in traces.items():
+        sorted_logs = sorted(trace_logs, key=lambda x: x["timestamp"])
+        start_time = datetime.fromisoformat(sorted_logs[0]["timestamp"])
+        end_time = datetime.fromisoformat(sorted_logs[-1]["timestamp"])
+        duration = (end_time - start_time).total_seconds()
+        
+        print(f"{trace_id:<40} {len(trace_logs):<10} {sorted_logs[0]['timestamp']:<30} {duration:<15.2f}")
+        sorted_trace_ids.append((trace_id, start_time))
+
+    # Sort traces by start time for detailed display
+    sorted_trace_ids.sort(key=lambda x: x[1])
+
+    for trace_id, _ in sorted_trace_ids:
+        print(f"\n\n{'#'*100}")
+        print(f"TRACE: {trace_id}")
+        print(f"{'#'*100}")
+        
+        trace_logs = traces[trace_id]
+        analyze_performance(trace_logs)
+        analyze_agent(trace_logs)
+        analyze_context(trace_logs)
+        analyze_memory(trace_logs)
+        analyze_sandbox(trace_logs)
+        analyze_llm(trace_logs)
+        analyze_tools(trace_logs)
 
 if __name__ == "__main__":
     main()

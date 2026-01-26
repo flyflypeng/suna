@@ -2,9 +2,13 @@ import json
 import time
 import os
 import uuid
+import contextvars
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 from core.utils.logger import logger
+
+# Context variable to store trace_id for current execution context
+_trace_context = contextvars.ContextVar("trace_id", default=None)
 
 class LocalMetricsCollector:
     _instance = None
@@ -15,6 +19,18 @@ class LocalMetricsCollector:
             cls._instance.log_file = os.path.join(os.getcwd(), "metrics_logs.jsonl")
         return cls._instance
 
+    def set_context(self, trace_id: str):
+        """Set the trace_id for the current context."""
+        return _trace_context.set(trace_id)
+
+    def get_context(self) -> Optional[str]:
+        """Get the trace_id for the current context."""
+        return _trace_context.get()
+
+    def clear_context(self, token):
+        """Reset the context to the previous state."""
+        _trace_context.reset(token)
+
     def log_event(self, event_type: str, data: Dict[str, Any]):
         """
         Log an event to the local metrics file.
@@ -23,8 +39,17 @@ class LocalMetricsCollector:
             event_type (str): The type of event (e.g., 'llm_call', 'tool_execution').
             data (Dict[str, Any]): The data to log.
         """
+        trace_id = self.get_context()
+        
+        # If data already has trace_id, use it, otherwise use context trace_id
+        if trace_id and "trace_id" not in data:
+             # We can add it to data or keep it at top level. 
+             # Keeping it at top level is cleaner for filtering.
+             pass
+
         event = {
             "event_id": str(uuid.uuid4()),
+            "trace_id": trace_id,
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "event_type": event_type,
             "data": data

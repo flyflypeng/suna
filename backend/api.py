@@ -122,12 +122,18 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+from core.observability.local_collector import local_collector
+
 @app.middleware("http")
 async def log_requests_middleware(request: Request, call_next):
     structlog.contextvars.clear_contextvars()
 
     request_id = str(uuid.uuid4())
     start_time = time.time()
+    
+    # Set trace_id context for local metrics collector
+    token = local_collector.set_context(request_id)
+    
     client_ip = request.client.host if request.client else "unknown"
     method = request.method
     path = request.url.path
@@ -157,6 +163,9 @@ async def log_requests_middleware(request: Request, call_next):
             error_str = f"Error of type {type(e).__name__}"
         logger.error(f"Request failed: {method} {path} | Error: {error_str} | Time: {process_time:.2f}s")
         raise
+    finally:
+        # Clear trace_id context
+        local_collector.clear_context(token)
 
 # Define allowed origins based on environment
 allowed_origins = ["https://www.kortix.com", "https://kortix.com", "https://www.suna.so", "https://suna.so"]
