@@ -43,25 +43,6 @@ python monitor.py --node-name node_b --interval 5 --duration 600 --patterns "day
 
 ## 3. 执行压测 (Locust)
 
-在压测机上执行。
-
-**前置条件**：你需要获取一个有效的 Suna 用户 JWT Token（可以从浏览器 LocalStorage 或数据库获取）。
-
-**配置 Prompt (可选)**:
-你可以通过以下环境变量自定义压测发送的 Prompt 内容：
-*   `SUNA_TEST_PROMPT`: 直接设置字符串 Prompt。
-*   `SUNA_TEST_PROMPT_FILE`: 指定包含 Prompt 内容的文件路径（优先级更高）。
-
-```bash
-# 设置环境变量 (必须)
-export SUNA_JWT_TOKEN="your_actual_jwt_token_here"
-
-# (可选) 设置自定义 Prompt 文件
-# export SUNA_TEST_PROMPT_FILE="my_complex_task.txt"
-
-# (可选) 设置简单 Prompt 字符串
-# export SUNA_TEST_PROMPT="Please write a python script to calculate fibonacci numbers."
-
 ### 如何获取真实的复杂 Prompt？
 
 为了真实模拟用户行为，建议通过浏览器抓取实际的请求 Payload。
@@ -79,6 +60,25 @@ export SUNA_JWT_TOKEN="your_actual_jwt_token_here"
 5. **(推荐) 直接复制 cURL**：
    - 右键点击该请求行 -> **Copy** -> **Copy as cURL (bash)**。
    - 将其粘贴到文本编辑器中，提取 `--form 'prompt="..."'` 中的内容保存到文件。
+
+在压测机上执行。
+
+**前置条件**：你需要获取一个有效的 Suna 用户 API Key（推荐在设置页面创建一个不过期的 API Key 用于压测）。
+
+**配置 Prompt (可选)**:
+你可以通过以下环境变量自定义压测发送的 Prompt 内容：
+*   `SUNA_TEST_PROMPT`: 直接设置字符串 Prompt。
+*   `SUNA_TEST_PROMPT_FILE`: 指定包含 Prompt 内容的文件路径（优先级更高）。
+
+```bash
+# 设置环境变量 (必须) - 注意：使用 pk_xxx:sk_xxx 的完整格式
+export SUNA_API_KEY="pk_xxxxxxxx:sk_xxxxxxxx"
+
+# (可选) 设置自定义 Prompt 文件
+# export SUNA_TEST_PROMPT_FILE="my_complex_task.txt"
+
+# (可选) 设置简单 Prompt 字符串
+# export SUNA_TEST_PROMPT="Please write a python script to calculate fibonacci numbers."
 
 # 启动压测
 # -u 50: 50个并发用户

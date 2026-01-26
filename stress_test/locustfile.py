@@ -8,9 +8,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-JWT_TOKEN = os.getenv("SUNA_JWT_TOKEN")
-if not JWT_TOKEN:
-    print("WARNING: SUNA_JWT_TOKEN env var not set. Requests may fail if auth is required.")
+API_KEY = os.getenv("SUNA_API_KEY")
+
+if not API_KEY:
+    print("WARNING: SUNA_API_KEY env var not set. Requests will likely fail.")
 
 def get_test_prompt():
     """
@@ -55,9 +56,10 @@ class SunaUser(HttpUser):
         Executed when a simulated user starts.
         We create a thread here so we can reuse it for chat messages.
         """
-        self.client.headers.update({
-            "Authorization": f"Bearer {JWT_TOKEN}"
-        })
+        if API_KEY:
+             self.client.headers.update({
+                "x-api-key": API_KEY
+            })
         
         # 1. Create a Thread
         # We assume the user exists and the token is valid.
