@@ -18,6 +18,7 @@ from core.services import redis
 from dramatiq.brokers.redis import RedisBroker
 import os
 from core.services.langfuse import langfuse
+from core.observability.local_collector import local_collector
 from core.utils.retry import retry
 
 import sentry_sdk
@@ -155,6 +156,9 @@ async def run_agent_background(
             stop_signal_received = True # Stop the run if the checker fails
 
     trace = langfuse.trace(name="agent_run", id=agent_run_id, session_id=thread_id, metadata={"project_id": project_id, "instance_id": instance_id})
+    
+    # Set the trace context for local metrics collector
+    trace_context_token = local_collector.set_context(trace.id if hasattr(trace, 'id') else agent_run_id)
 
     try:
         # Setup Pub/Sub listener for control signals
@@ -264,6 +268,10 @@ async def run_agent_background(
             logger.warning(f"Failed to publish ERROR signal: {str(e)}")
 
     finally:
+        # Clear local collector context
+        if trace_context_token:
+            local_collector.clear_context(trace_context_token)
+
         # Cleanup stop checker task
         if stop_checker and not stop_checker.done():
             stop_checker.cancel()

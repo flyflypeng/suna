@@ -43,6 +43,10 @@ class LocalMetricsCollector:
         """
         trace_id = self.get_context()
         
+        # If data already has trace_id, use it as the source of truth
+        if "trace_id" in data:
+            trace_id = data["trace_id"]
+        
         # If data already has trace_id, use it, otherwise use context trace_id
         if trace_id and "trace_id" not in data:
              # We can add it to data or keep it at top level. 
