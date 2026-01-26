@@ -90,38 +90,46 @@ def main():
 
         start_time = time.time()
         
-        while time.time() - start_time < args.duration:
-            iteration_start = time.time()
-            timestamp = datetime.now().isoformat()
-            
-            try:
-                all_containers = client.containers.list()
-                target_containers = []
+        try:
+            while time.time() - start_time < args.duration:
+                iteration_start = time.time()
+                timestamp = datetime.now().isoformat()
                 
-                for c in all_containers:
-                    for regex in regex_list:
-                        if regex.search(c.name):
-                            target_containers.append(c)
-                            break
-                
-                if not target_containers:
-                    print("No matching containers found.")
-                
-                for container in target_containers:
-                    stats = get_container_stats(container)
-                    if stats:
-                        row = {'timestamp': timestamp, 'container_name': container.name}
-                        row.update(stats)
-                        writer.writerow(row)
-                        print(f"[{timestamp}] Recorded stats for {container.name}")
-                        
-            except Exception as e:
-                print(f"Error during monitoring loop: {e}")
+                try:
+                    all_containers = client.containers.list()
+                    target_containers = []
+                    
+                    for c in all_containers:
+                        for regex in regex_list:
+                            if regex.search(c.name):
+                                target_containers.append(c)
+                                break
+                    
+                    if not target_containers:
+                        print("No matching containers found.")
+                    
+                    for container in target_containers:
+                        stats = get_container_stats(container)
+                        if stats:
+                            row = {'timestamp': timestamp, 'container_name': container.name}
+                            row.update(stats)
+                            writer.writerow(row)
+                            print(f"[{timestamp}] Recorded stats for {container.name}")
+                    
+                    # Flush data to disk immediately to prevent data loss on interruption
+                    csvfile.flush()
+                            
+                except Exception as e:
+                    print(f"Error during monitoring loop: {e}")
 
-            # Sleep for the remainder of the interval
-            elapsed = time.time() - iteration_start
-            sleep_time = max(0, args.interval - elapsed)
-            time.sleep(sleep_time)
+                # Sleep for the remainder of the interval
+                elapsed = time.time() - iteration_start
+                sleep_time = max(0, args.interval - elapsed)
+                time.sleep(sleep_time)
+                
+        except KeyboardInterrupt:
+            print("\nMonitoring stopped by user. Saving data and exiting...")
+
 
 if __name__ == "__main__":
     main()
