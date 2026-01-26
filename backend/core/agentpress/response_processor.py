@@ -30,7 +30,7 @@ from core.utils.json_helpers import (
 )
 from litellm import token_counter
 
-def calculate_token_breakdown(prompt_messages: List[Dict[str, Any]], llm_model: str) -> Dict[str, int]:
+def calculate_token_breakdown(prompt_messages: List[Dict[str, Any]], llm_model: str, tool_registry: Optional[ToolRegistry] = None) -> Dict[str, int]:
     """
     Calculate token breakdown by component using simple heuristics.
     
@@ -40,6 +40,7 @@ def calculate_token_breakdown(prompt_messages: List[Dict[str, Any]], llm_model: 
     Args:
         prompt_messages: List of messages sent to the LLM
         llm_model: The model being used
+        tool_registry: Optional registry to calculate tool definition tokens
         
     Returns:
         Dictionary with token counts by component
@@ -114,10 +115,19 @@ def calculate_token_breakdown(prompt_messages: List[Dict[str, Any]], llm_model: 
                 else:
                     breakdown['workspace_context'] += token_count
         
-        # Estimate tool definitions (not in messages, added separately by LiteLLM)
-        # Rough estimate: ~500-2000 tokens for tool schemas
-        # We'll leave this at 0 for now since we can't accurately measure it
-        breakdown['tools'] = 0
+        # Calculate tool definitions tokens if registry is available
+        if tool_registry:
+            try:
+                schemas = tool_registry.get_openapi_schemas()
+                if schemas:
+                    tools_json = json.dumps(schemas)
+                    breakdown['tools'] = counter.count_tokens(tools_json)
+            except Exception as e:
+                logger.warning(f"Failed to calculate tool definition tokens: {e}")
+                breakdown['tools'] = 0
+        else:
+            # Fallback to 0 if no registry provided
+            breakdown['tools'] = 0
         
         logger.info(f"Token breakdown calculated: {breakdown}")
         return breakdown
@@ -269,7 +279,7 @@ class ResponseProcessor:
         Returns:
             Dictionary with token counts by component
         """
-        return calculate_token_breakdown(prompt_messages, llm_model)
+        return calculate_token_breakdown(prompt_messages, llm_model, self.tool_registry)
     
     def _serialize_model_response(self, model_response) -> Dict[str, Any]:
         """Convert a LiteLLM ModelResponse object to a JSON-serializable dictionary.
