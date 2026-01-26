@@ -1,0 +1,7 @@
+研究全球排名前 20 位的 AI 领域的研究人员，并创建包含其隶属关系、重点研究方向、引用量最高的论文和最近出版物的表格
+
+----
+
+** Wide Research Configuration:**
+
+- **Output Format:** spreadsheet
