@@ -43,11 +43,11 @@ def analyze_tools(logs):
                 tool_stats[name]["errors"] += 1
 
     print("\n--- Tool Execution Statistics (General) ---")
-    print(f"{'Tool Name':<40} {'Count':<10} {'Avg Duration (ms)':<20} {'Errors':<10}")
-    print("-" * 80)
+    print(f"{'Tool Name':<40} {'Count':<10} {'Total Dur (ms)':<15} {'Avg Dur (ms)':<15} {'Errors':<10}")
+    print("-" * 100)
     for name, stats in sorted(tool_stats.items(), key=lambda x: x[1]['count'], reverse=True):
         avg_duration = stats["total_duration"] / stats["count"] if stats["count"] > 0 else 0
-        print(f"{name:<40} {stats['count']:<10} {avg_duration:<20.2f} {stats['errors']:<10}")
+        print(f"{name:<40} {stats['count']:<10} {stats['total_duration']:<15.2f} {avg_duration:<15.2f} {stats['errors']:<10}")
 
 def analyze_llm(logs):
     llm_stats = defaultdict(lambda: {
@@ -76,12 +76,12 @@ def analyze_llm(logs):
                llm_stats[model]["errors"] += 1
 
     print("\n--- LLM Statistics ---")
-    print(f"{'Model Name':<40} {'Count':<10} {'Avg Duration (ms)':<20} {'Avg Tokens':<15} {'Errors':<10}")
-    print("-" * 100)
+    print(f"{'Model Name':<40} {'Count':<10} {'Total Dur (ms)':<15} {'Avg Dur (ms)':<15} {'Avg Tokens':<15} {'Errors':<10}")
+    print("-" * 115)
     for name, stats in sorted(llm_stats.items(), key=lambda x: x[1]['count'], reverse=True):
         avg_duration = stats["total_duration"] / stats["count"] if stats["count"] > 0 else 0
         avg_tokens = stats["total_tokens"] / stats["count"] if stats["count"] > 0 else 0
-        print(f"{name:<40} {stats['count']:<10} {avg_duration:<20.2f} {avg_tokens:<15.0f} {stats['errors']:<10}")
+        print(f"{name:<40} {stats['count']:<10} {stats['total_duration']:<15.2f} {avg_duration:<15.2f} {avg_tokens:<15.0f} {stats['errors']:<10}")
         
         # Display breakdown if available
         if stats["breakdown"] and stats["total_tokens"] > 0:
@@ -97,7 +97,9 @@ def analyze_agent(logs):
     print("\n--- Agent Execution Summary ---")
     print(f"Total Agent Runs: {len(agent_logs)}")
     if agent_logs:
-        avg_duration = sum(l["data"].get("duration_ms", 0) for l in agent_logs) / len(agent_logs)
+        total_duration = sum(l["data"].get("duration_ms", 0) for l in agent_logs)
+        avg_duration = total_duration / len(agent_logs)
+        print(f"Total Run Duration: {total_duration:.2f} ms")
         print(f"Average Run Duration: {avg_duration:.2f} ms")
 
 def analyze_sandbox(logs):
@@ -120,11 +122,11 @@ def analyze_sandbox(logs):
         if not success:
             actions[action]["errors"] += 1
 
-    print(f"{'Action':<30} {'Count':<10} {'Avg Duration (ms)':<20} {'Errors':<10}")
-    print("-" * 75)
+    print(f"{'Action':<30} {'Count':<10} {'Total Dur (ms)':<15} {'Avg Dur (ms)':<15} {'Errors':<10}")
+    print("-" * 90)
     for action, stats in sorted(actions.items(), key=lambda x: x[1]['count'], reverse=True):
         avg_duration = stats["total_duration"] / stats["count"] if stats["count"] > 0 else 0
-        print(f"{action:<30} {stats['count']:<10} {avg_duration:<20.2f} {stats['errors']:<10}")
+        print(f"{action:<30} {stats['count']:<10} {stats['total_duration']:<15.2f} {avg_duration:<15.2f} {stats['errors']:<10}")
 
 def analyze_context(logs):
     # Analyze tools related to context and task management
@@ -142,6 +144,7 @@ def analyze_context(logs):
     avg_duration = total_duration / total_count if total_count > 0 else 0
     
     print(f"Total Context Operations: {total_count}")
+    print(f"Total Duration: {total_duration:.2f} ms")
     print(f"Average Duration: {avg_duration:.2f} ms")
     
     # Breakdown
@@ -152,11 +155,11 @@ def analyze_context(logs):
         tool_stats[name]["duration"] += l["data"].get("duration_ms", 0)
         
     print("\nBreakdown by Operation:")
-    print(f"{'Operation':<20} {'Count':<10} {'Avg Duration (ms)':<20}")
-    print("-" * 55)
+    print(f"{'Operation':<20} {'Count':<10} {'Total Dur (ms)':<15} {'Avg Dur (ms)':<15}")
+    print("-" * 65)
     for name, stats in sorted(tool_stats.items(), key=lambda x: x[1]['count'], reverse=True):
          avg = stats["duration"] / stats["count"]
-         print(f"{name:<20} {stats['count']:<10} {avg:<20.2f}")
+         print(f"{name:<20} {stats['count']:<10} {stats['duration']:<15.2f} {avg:<15.2f}")
 
 def analyze_memory(logs):
     # Analyze tools related to memory management
@@ -174,6 +177,7 @@ def analyze_memory(logs):
     avg_duration = total_duration / total_count if total_count > 0 else 0
     
     print(f"Total Memory Operations: {total_count}")
+    print(f"Total Duration: {total_duration:.2f} ms")
     print(f"Average Duration: {avg_duration:.2f} ms")
     
     # Breakdown
@@ -184,11 +188,11 @@ def analyze_memory(logs):
         tool_stats[name]["duration"] += l["data"].get("duration_ms", 0)
         
     print("\nBreakdown by Operation:")
-    print(f"{'Operation':<20} {'Count':<10} {'Avg Duration (ms)':<20}")
-    print("-" * 55)
+    print(f"{'Operation':<20} {'Count':<10} {'Total Dur (ms)':<15} {'Avg Dur (ms)':<15}")
+    print("-" * 65)
     for name, stats in sorted(tool_stats.items(), key=lambda x: x[1]['count'], reverse=True):
          avg = stats["duration"] / stats["count"]
-         print(f"{name:<20} {stats['count']:<10} {avg:<20.2f}")
+         print(f"{name:<20} {stats['count']:<10} {stats['duration']:<15.2f} {avg:<15.2f}")
 
 
 def analyze_performance(logs):
@@ -319,7 +323,9 @@ def main():
     traces = defaultdict(list)
     for log in logs:
         # Default to 'unknown' if trace_id is missing (for backward compatibility)
-        trace_id = log.get("trace_id", "unknown")
+        trace_id = log.get("trace_id")
+        if trace_id is None:
+            trace_id = "unknown"
         traces[trace_id].append(log)
 
     # If trace_id is specified, show only that trace
@@ -354,7 +360,7 @@ def main():
         end_time = datetime.fromisoformat(sorted_logs[-1]["timestamp"])
         duration = (end_time - start_time).total_seconds()
         
-        print(f"{trace_id:<40} {len(trace_logs):<10} {sorted_logs[0]['timestamp']:<30} {duration:<15.2f}")
+        print(f"{str(trace_id):<40} {len(trace_logs):<10} {sorted_logs[0]['timestamp']:<30} {duration:<15.2f}")
         sorted_trace_ids.append((trace_id, start_time))
 
     # Sort traces by start time for detailed display
