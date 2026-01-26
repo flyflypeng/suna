@@ -1,0 +1,6 @@
+locust
+docker
+pandas
+matplotlib
+requests
+python-dotenv
