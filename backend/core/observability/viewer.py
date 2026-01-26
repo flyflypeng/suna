@@ -1,7 +1,7 @@
 import json
 import os
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 import argparse
 
 LOG_FILE = "metrics_logs.jsonl" # Assuming run from root or adjusted path
@@ -173,9 +173,118 @@ def analyze_memory(logs):
          print(f"{name:<20} {stats['count']:<10} {avg:<20.2f}")
 
 
+def analyze_performance(logs):
+    if not logs:
+        return
+
+    # Sort logs by timestamp to ensure chronological order
+    sorted_logs = sorted(logs, key=lambda x: x["timestamp"])
+    
+    # Calculate Total Session Duration
+    start_time = datetime.fromisoformat(sorted_logs[0]["timestamp"])
+    end_time = datetime.fromisoformat(sorted_logs[-1]["timestamp"])
+    total_duration_delta = end_time - start_time
+    total_duration_ms = total_duration_delta.total_seconds() * 1000
+
+    # Helper to create intervals (start, end)
+    def get_intervals(event_type):
+        intervals = []
+        for log in logs:
+            if log["event_type"] == event_type:
+                end = datetime.fromisoformat(log["timestamp"])
+                duration = log["data"].get("duration_ms", 0)
+                start = end - timedelta(milliseconds=duration)
+                intervals.append((start, end))
+        return intervals
+
+    llm_intervals = get_intervals("llm_call")
+    tool_intervals = get_intervals("tool_execution")
+    sandbox_intervals = get_intervals("agent_sandbox")
+
+    # Calculate Raw Durations (Sum of durations)
+    total_llm_raw_ms = sum(l["data"].get("duration_ms", 0) for l in logs if l["event_type"] == "llm_call")
+    total_tool_raw_ms = sum(l["data"].get("duration_ms", 0) for l in logs if l["event_type"] == "tool_execution")
+    total_sandbox_raw_ms = sum(l["data"].get("duration_ms", 0) for l in logs if l["event_type"] == "agent_sandbox")
+
+    # Calculate Overlap between LLM and Tool
+    total_overlap_ms = 0
+    # A simple n^2 approach for overlap is fine for log size
+    # But better to use merged intervals for precise overlap if needed.
+    # Here we just want the intersection sum.
+    # Let's use a discretized approach or interval intersection logic.
+    
+    # We will use a robust interval union/intersection method
+    def merge_intervals(intervals):
+        if not intervals:
+            return []
+        intervals.sort(key=lambda x: x[0])
+        merged = [intervals[0]]
+        for current in intervals[1:]:
+            last = merged[-1]
+            if current[0] < last[1]: # Overlap
+                merged[-1] = (last[0], max(last[1], current[1]))
+            else:
+                merged.append(current)
+        return merged
+
+    def calculate_duration(intervals):
+        merged = merge_intervals(intervals)
+        total = 0
+        for start, end in merged:
+            total += (end - start).total_seconds() * 1000
+        return total
+
+    # Union of all active intervals (LLM U Tool U Sandbox)
+    all_intervals = llm_intervals + tool_intervals + sandbox_intervals
+    total_active_ms = calculate_duration(all_intervals)
+    
+    # System Overhead = Total Session - Active Time
+    # Note: If Active Time > Total Session (due to clock skew or start/end definition), clamp to 0?
+    # Actually, start/end are defined by first/last log. 
+    # It is possible an event started BEFORE the first log (if first log is end of something long).
+    # But here first log is likely agent_execution start or similar.
+    # Let's assume start_time is reliable enough.
+    
+    system_overhead_ms = max(0, total_duration_ms - total_active_ms)
+
+    # Calculate LLM & Tool Overlap specifically
+    # Intersection of Union(LLM) and Union(Tool)
+    merged_llm = merge_intervals(llm_intervals)
+    merged_tool = merge_intervals(tool_intervals)
+    
+    overlap_ms = 0
+    for l_start, l_end in merged_llm:
+        for t_start, t_end in merged_tool:
+            latest_start = max(l_start, t_start)
+            earliest_end = min(l_end, t_end)
+            if latest_start < earliest_end:
+                overlap_ms += (earliest_end - latest_start).total_seconds() * 1000
+
+    print("\n--- End-to-End Performance Statistics ---")
+    print(f"Total Session Duration: {total_duration_ms/1000:.2f} s")
+    
+    print("\nComponent Durations (Independent & Raw):")
+    print(f"- LLM Call Duration: {total_llm_raw_ms/1000:.2f} s")
+    print(f"- Tool Execution Duration: {total_tool_raw_ms/1000:.2f} s")
+    print(f"- Sandbox Execution Duration: {total_sandbox_raw_ms/1000:.2f} s")
+    
+    print("\nAnalysis:")
+    print(f"- Sum of LLM & Tool: {(total_llm_raw_ms + total_tool_raw_ms)/1000:.2f} s")
+    print(f"- Calculated Overlap (LLM & Tool): {overlap_ms/1000:.2f} s")
+    if overlap_ms > 0:
+        print(f"  (Note: {overlap_ms/1000:.2f}s of Tool Execution occurred during LLM Streaming)")
+
+    print("\nSystem Breakdown:")
+    print(f"- Effective Active Time (Union of all events): {total_active_ms/1000:.2f} s")
+    print(f"- Other System Overhead: {system_overhead_ms/1000:.2f} s")
+    print(f"  (Time not accounted for by LLM, Tool, or Sandbox events)")
+    
+    print(f"\nStart Time: {sorted_logs[0]['timestamp']}")
+    print(f"End Time: {sorted_logs[-1]['timestamp']}")
+
 def main():
     parser = argparse.ArgumentParser(description="View local observability metrics")
-    parser.add_argument("--file", default="metrics_logs.jsonl", help="Path to jsonl log file")
+    parser.add_argument("--file", default="/home/flyflypeng/agent/suna/logs/research-top20-ai-researcher-log.json", help="Path to jsonl log file")
     args = parser.parse_args()
 
     global LOG_FILE
@@ -187,6 +296,7 @@ def main():
         print("No logs found.")
         return
 
+    analyze_performance(logs)
     analyze_agent(logs)
     analyze_context(logs)
     analyze_memory(logs)
