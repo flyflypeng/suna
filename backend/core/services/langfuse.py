@@ -3,6 +3,52 @@ import atexit
 from langfuse import Langfuse
 from core.utils.logger import logger
 
+# Define Mock classes globally to be reused
+class MockBase:
+    def __init__(self, id="mock-id"):
+        self.id = id
+    
+    def trace(self, **kwargs): return MockTrace()
+    def generation(self, **kwargs): return MockGeneration()
+    def span(self, **kwargs): return MockSpan()
+    def event(self, **kwargs): return MockEvent()
+    def score(self, **kwargs): return MockScore()
+    def end(self, **kwargs): return None
+    def update(self, **kwargs): return self
+    def flush(self): pass
+    def shutdown(self): pass
+    def auth_check(self): return False
+    
+    def __getattr__(self, name):
+        def no_op(*args, **kwargs):
+            return self # Return self to allow chaining for unknown methods
+        return no_op
+
+class MockLangfuse(MockBase):
+    def __init__(self):
+        super().__init__("mock-langfuse-id")
+        self.enabled = False
+
+class MockTrace(MockBase):
+    def __init__(self):
+        super().__init__("mock-trace-id")
+
+class MockSpan(MockBase):
+    def __init__(self):
+        super().__init__("mock-span-id")
+
+class MockGeneration(MockBase):
+    def __init__(self):
+        super().__init__("mock-generation-id")
+
+class MockEvent(MockBase):
+    def __init__(self):
+        super().__init__("mock-event-id")
+
+class MockScore(MockBase):
+    def __init__(self):
+        super().__init__("mock-score-id")
+
 # Get configuration from environment
 public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
 secret_key = os.getenv("LANGFUSE_SECRET_KEY")
@@ -96,89 +142,11 @@ if enabled:
             langfuse = Langfuse(enabled=False, httpx_client=httpx_client)
         except Exception:
             # Ultimate fallback - create a mock client
-            class MockLangfuse:
-                def __init__(self):
-                    self.enabled = False
-                def trace(self, **kwargs): return MockTrace()
-                def generation(self, **kwargs): return MockGeneration()
-                def span(self, **kwargs): return MockSpan()
-                def event(self, **kwargs): pass
-                def flush(self): pass
-                def shutdown(self): pass
-                def auth_check(self): return False
-            
-            class MockTrace:
-                def __init__(self): 
-                    self.id = "mock-trace-id"
-                
-                def __getattr__(self, name):
-                    # Return a no-op function for any method call
-                    def no_op(*args, **kwargs):
-                        pass
-                    return no_op
-            class MockGeneration:
-                def __init__(self): 
-                    self.id = "mock-generation-id"
-                
-                def __getattr__(self, name):
-                    # Return a no-op function for any method call
-                    def no_op(*args, **kwargs):
-                        pass
-                    return no_op
-            class MockSpan:
-                def __init__(self): 
-                    self.id = "mock-span-id"
-                
-                def __getattr__(self, name):
-                    # Return a no-op function for any method call
-                    def no_op(*args, **kwargs):
-                        pass
-                    return no_op
-            
             langfuse = MockLangfuse()
         enabled = False
 else:
     logger.debug("⚠️ Langfuse disabled - missing LANGFUSE_PUBLIC_KEY or LANGFUSE_SECRET_KEY")
     # Create mock client for disabled state
-    class MockLangfuse:
-        def __init__(self):
-            self.enabled = False
-        def trace(self, **kwargs): return MockTrace()
-        def generation(self, **kwargs): return MockGeneration()
-        def span(self, **kwargs): return MockSpan()
-        def event(self, **kwargs): pass
-        def flush(self): pass
-        def shutdown(self): pass
-        def auth_check(self): return False
-    
-    class MockTrace:
-        def __init__(self): 
-            self.id = "mock-trace-id"
-        
-        def __getattr__(self, name):
-            # Return a no-op function for any method call
-            def no_op(*args, **kwargs):
-                pass
-            return no_op
-    class MockGeneration:
-        def __init__(self): 
-            self.id = "mock-generation-id"
-        
-        def __getattr__(self, name):
-            # Return a no-op function for any method call
-            def no_op(*args, **kwargs):
-                pass
-            return no_op
-    class MockSpan:
-        def __init__(self): 
-            self.id = "mock-span-id"
-        
-        def __getattr__(self, name):
-            # Return a no-op function for any method call
-            def no_op(*args, **kwargs):
-                pass
-            return no_op
-    
     langfuse = MockLangfuse()
 
 def get_langfuse_client():
