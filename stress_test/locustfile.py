@@ -77,7 +77,7 @@ class SunaUser(HttpUser):
     @task
     def chat_message(self):
         """
-        Simulate sending a message to the agent.
+        Simulate sending a message to the agent and waiting for completion.
         """
         if not self.thread_id:
             return
@@ -90,19 +90,79 @@ class SunaUser(HttpUser):
             "model_name": "openai/gpt-4o-mini" # Use a cheap/fast model or a mocked one if available
         }
         
-        # Note: In Locust, passing 'data' makes it form-encoded or multipart depending on usage.
-        # For multipart without files, we can just use 'data'.
+        # Record start time for the entire flow
+        start_time = time.time()
+        agent_run_id = None
         
+        # 1. Trigger Agent Run
         with self.client.post(
             "/api/agent/start", 
             data=payload, 
-            name="/api/agent/start (Chat)",
+            name="/api/agent/start (Trigger)",
             catch_response=True
         ) as response:
             if response.status_code == 200:
-                response.success()
+                try:
+                    data = response.json()
+                    agent_run_id = data.get("agent_run_id")
+                    response.success()
+                except Exception as e:
+                    response.failure(f"Failed to parse response: {e}")
             else:
                 response.failure(f"Status {response.status_code}: {response.text}")
+                return # Stop if trigger failed
+
+        if not agent_run_id:
+            return
+
+        # 2. Poll for Completion
+        # We loop until the status is terminal (completed, failed, stopped, error)
+        while True:
+            # Sleep to avoid flooding the server with poll requests
+            time.sleep(10) 
+            
+            with self.client.get(
+                f"/api/agent-run/{agent_run_id}",
+                name="/api/agent-run/{id} (Poll)",
+                catch_response=True
+            ) as poll_resp:
+                if poll_resp.status_code != 200:
+                    poll_resp.failure(f"Polling failed: {poll_resp.status_code}")
+                    # Record failure for the whole flow
+                    events.request.fire(
+                        request_type="Flow",
+                        name="Complete Agent Run",
+                        response_time=(time.time() - start_time) * 1000,
+                        response_length=0,
+                        exception=Exception(f"Polling failed: {poll_resp.status_code}")
+                    )
+                    break
+                
+                try:
+                    run_data = poll_resp.json()
+                    status = run_data.get("status")
+                    
+                    if status in ["completed", "failed", "stopped", "error"]:
+                        total_time = (time.time() - start_time) * 1000
+                        
+                        # Determine if the flow was successful
+                        exception = None
+                        if status != "completed":
+                            exception = Exception(f"Agent run ended with status: {status}")
+                        
+                        # Fire a custom event to track the full duration
+                        events.request.fire(
+                            request_type="Flow",
+                            name="Complete Agent Run",
+                            response_time=total_time,
+                            response_length=0,
+                            exception=exception
+                        )
+                        break
+                    # If still running, continue loop
+                except Exception as e:
+                    poll_resp.failure(f"JSON parse error: {e}")
+                    break
 
     def on_stop(self):
         """
