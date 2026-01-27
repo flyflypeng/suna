@@ -297,7 +297,7 @@ async def create_thread(
     account_id = user_id
     
     try:
-        if config.ENV_MODE != config.EnvMode.LOCAL:
+        if config.ENV_MODE != EnvMode.LOCAL:
             from core.utils.limits_checker import check_thread_limit, check_project_count_limit
             
             thread_limit_check = await check_thread_limit(client, account_id)
