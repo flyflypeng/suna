@@ -1,6 +1,7 @@
 import os
 import random
 import time
+import requests
 from locust import HttpUser, task, between, events
 from dotenv import load_dotenv
 
@@ -50,14 +51,21 @@ print(f"Test Prompt Preview: {TEST_PROMPT[:100]}...")
 class SunaUser(HttpUser):
     wait_time = between(2, 5)
     thread_id = None
+    silent_client = None
     
     def on_start(self):
         """
         Executed when a simulated user starts.
         We create a thread here so we can reuse it for chat messages.
         """
+        # Initialize a silent client for requests we don't want Locust to track automatically
+        self.silent_client = requests.Session()
+        
         if API_KEY:
              self.client.headers.update({
+                "x-api-key": API_KEY
+            })
+             self.silent_client.headers.update({
                 "x-api-key": API_KEY
             })
         
@@ -78,6 +86,7 @@ class SunaUser(HttpUser):
     def chat_message(self):
         """
         Simulate sending a message to the agent and waiting for completion.
+        Tracks the full duration from Start -> Completion as the primary metric.
         """
         if not self.thread_id:
             return
@@ -93,45 +102,56 @@ class SunaUser(HttpUser):
         # Record start time for the entire flow
         start_time = time.time()
         agent_run_id = None
+        request_name = "Agent Run Full Lifecycle"
         
-        # 1. Trigger Agent Run
-        with self.client.post(
-            "/api/agent/start", 
-            data=payload, 
-            name="/api/agent/start (Trigger)",
-            catch_response=True
-        ) as response:
-            if response.status_code == 200:
-                try:
-                    data = response.json()
-                    agent_run_id = data.get("agent_run_id")
-                    response.success()
-                except Exception as e:
-                    response.failure(f"Failed to parse response: {e}")
-            else:
-                response.failure(f"Status {response.status_code}: {response.text}")
-                return # Stop if trigger failed
-
-        if not agent_run_id:
-            return
-
-        # 2. Poll for Completion
-        # We loop until the status is terminal (completed, failed, stopped, error)
-        while True:
-            # Sleep to avoid flooding the server with poll requests
-            time.sleep(10) 
+        try:
+            # 1. Trigger Agent Run (Silent)
+            # We use self.host to build the full URL since we are using requests directly
+            url_start = f"{self.host}/api/agent/start"
+            response = self.silent_client.post(
+                url_start, 
+                data=payload
+            )
             
-            with self.client.get(
-                f"/api/agent-run/{agent_run_id}",
-                name="/api/agent-run/{id} (Poll)",
-                catch_response=True
-            ) as poll_resp:
+            if response.status_code == 200:
+                data = response.json()
+                agent_run_id = data.get("agent_run_id")
+            else:
+                # If start fails, record failure immediately
+                events.request.fire(
+                    request_type="POST",
+                    name=request_name,
+                    response_time=(time.time() - start_time) * 1000,
+                    response_length=len(response.content),
+                    exception=Exception(f"Start failed: {response.status_code} - {response.text[:100]}")
+                )
+                return
+
+            if not agent_run_id:
+                events.request.fire(
+                    request_type="POST",
+                    name=request_name,
+                    response_time=(time.time() - start_time) * 1000,
+                    response_length=len(response.content),
+                    exception=Exception("No agent_run_id returned")
+                )
+                return
+
+            # 2. Poll for Completion (Silent)
+            # We loop until the status is terminal (completed, failed, stopped, error)
+            url_poll = f"{self.host}/api/agent-run/{agent_run_id}"
+            
+            while True:
+                # Sleep to avoid flooding the server with poll requests
+                time.sleep(2) # Reduced sleep for more granular measurement, or keep 10? User didn't specify, but 10s is long for P95 if tasks are fast. Let's stick to a reasonable polling interval. 
+                # If tasks take minutes, 10s is fine. If seconds, 2s is better. I'll use 2s to be more responsive.
+                
+                poll_resp = self.silent_client.get(url_poll)
+                
                 if poll_resp.status_code != 200:
-                    poll_resp.failure(f"Polling failed: {poll_resp.status_code}")
-                    # Record failure for the whole flow
                     events.request.fire(
-                        request_type="Flow",
-                        name="Complete Agent Run",
+                        request_type="POST", # Using POST as the main interaction type or Custom
+                        name=request_name,
                         response_time=(time.time() - start_time) * 1000,
                         response_length=0,
                         exception=Exception(f"Polling failed: {poll_resp.status_code}")
@@ -150,10 +170,10 @@ class SunaUser(HttpUser):
                         if status != "completed":
                             exception = Exception(f"Agent run ended with status: {status}")
                         
-                        # Fire a custom event to track the full duration
+                        # Fire the single event for the whole transaction
                         events.request.fire(
-                            request_type="Flow",
-                            name="Complete Agent Run",
+                            request_type="POST", # Or "Flow" - keeping it consistent with HTTP method or just "Flow"
+                            name=request_name,
                             response_time=total_time,
                             response_length=0,
                             exception=exception
@@ -161,8 +181,23 @@ class SunaUser(HttpUser):
                         break
                     # If still running, continue loop
                 except Exception as e:
-                    poll_resp.failure(f"JSON parse error: {e}")
+                    events.request.fire(
+                        request_type="POST",
+                        name=request_name,
+                        response_time=(time.time() - start_time) * 1000,
+                        response_length=0,
+                        exception=Exception(f"JSON parse error during poll: {e}")
+                    )
                     break
+                    
+        except Exception as e:
+             events.request.fire(
+                request_type="POST",
+                name=request_name,
+                response_time=(time.time() - start_time) * 1000,
+                response_length=0,
+                exception=e
+            )
 
     def on_stop(self):
         """
