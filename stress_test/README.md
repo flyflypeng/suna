@@ -95,19 +95,42 @@ locust -f locustfile.py \
 
 ## 4. 数据分析与可视化
 
-压测结束后，请收集所有生成的 CSV 文件到同一目录：
+压测结束后，请收集所有生成的 CSV 文件。脚本现在支持灵活指定文件路径，不再要求必须放在同一目录。
 
-1.  `test_results_stats_history.csv` (Locust 生成)
-2.  `resource_stats_node_a.csv` (Node A 生成)
-3.  `resource_stats_node_b.csv` (Node B 生成)
+**使用示例：**
 
-运行分析脚本：
+1.  **自动扫描目录（原有用法）**：
+    将所有文件放在同一目录下，脚本会自动识别。
 
-```bash
-python analyze.py .
-```
+    ```bash
+    python analyze.py /path/to/results_dir
+    ```
 
-脚本将在 `plots/` 目录下生成以下图表：
+2.  **单独分析 Locust 数据**：
+    适用于只关心压测性能指标（TPS, 响应时间）的场景。
+
+    ```bash
+    python analyze.py --locust-file test_results_stats_history.csv
+    ```
+
+3.  **单独分析资源监控数据**：
+    适用于只关心服务器资源负载的场景。支持指定多个资源文件。
+
+    ```bash
+    python analyze.py --resource-files resource_stats_node_a.csv resource_stats_node_b.csv
+    ```
+
+4.  **混合模式（指定所有文件）**：
+    明确指定各类文件路径，并将结果输出到自定义目录。
+
+    ```bash
+    python analyze.py \
+      --locust-file ./data/test_results_stats_history.csv \
+      --resource-files ./data/resource_stats_node_a.csv ./data/resource_stats_node_b.csv \
+      --output-dir ./my_analysis_report
+    ```
+
+脚本将在输出目录（默认为 `plots/`）下生成以下图表：
 *   `latency_p50_p95.png`: P50/P95 时延趋势
 *   `throughput_rps.png`: 吞吐量 (RPS)
 *   `cpu_usage.png`: 容器 CPU 利用率
