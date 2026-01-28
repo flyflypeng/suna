@@ -352,7 +352,6 @@ async def _wrap_streaming_response(response, model_name: str, initial_duration_m
             # Capture content for fallback token counting
             if hasattr(chunk, 'choices') and chunk.choices:
                 delta = chunk.choices[0].delta
-                print(f"DEBUG: chunk content: {getattr(delta, 'content', 'MISSING')}")
                 if hasattr(delta, 'content') and delta.content:
                     accumulated_content.append(delta.content)
 

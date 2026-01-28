@@ -1,5 +1,6 @@
 import os
 import atexit
+import uuid
 from langfuse import Langfuse
 from core.utils.logger import logger
 
@@ -8,11 +9,11 @@ class MockBase:
     def __init__(self, id="mock-id"):
         self.id = id
     
-    def trace(self, **kwargs): return MockTrace()
-    def generation(self, **kwargs): return MockGeneration()
-    def span(self, **kwargs): return MockSpan()
-    def event(self, **kwargs): return MockEvent()
-    def score(self, **kwargs): return MockScore()
+    def trace(self, **kwargs): return MockTrace(id=kwargs.get("id"))
+    def generation(self, **kwargs): return MockGeneration(id=kwargs.get("id"))
+    def span(self, **kwargs): return MockSpan(id=kwargs.get("id"))
+    def event(self, **kwargs): return MockEvent(id=kwargs.get("id"))
+    def score(self, **kwargs): return MockScore(id=kwargs.get("id"))
     def end(self, **kwargs): return None
     def update(self, **kwargs): return self
     def flush(self): pass
@@ -30,24 +31,24 @@ class MockLangfuse(MockBase):
         self.enabled = False
 
 class MockTrace(MockBase):
-    def __init__(self):
-        super().__init__("mock-trace-id")
+    def __init__(self, id=None):
+        super().__init__(id or str(uuid.uuid4()))
 
 class MockSpan(MockBase):
-    def __init__(self):
-        super().__init__("mock-span-id")
+    def __init__(self, id=None):
+        super().__init__(id or str(uuid.uuid4()))
 
 class MockGeneration(MockBase):
-    def __init__(self):
-        super().__init__("mock-generation-id")
+    def __init__(self, id=None):
+        super().__init__(id or str(uuid.uuid4()))
 
 class MockEvent(MockBase):
-    def __init__(self):
-        super().__init__("mock-event-id")
+    def __init__(self, id=None):
+        super().__init__(id or str(uuid.uuid4()))
 
 class MockScore(MockBase):
-    def __init__(self):
-        super().__init__("mock-score-id")
+    def __init__(self, id=None):
+        super().__init__(id or str(uuid.uuid4()))
 
 # Get configuration from environment
 public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
