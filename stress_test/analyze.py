@@ -70,62 +70,136 @@ def analyze_results(locust_file=None, resource_files=None, output_dir="plots"):
             if full_monitor_df.empty:
                 print("Skipping resource plots (no data).")
             else:
-                # --- Plot 3: CPU Usage by Container ---
-                # We aggregate by container name
+                # --- Pre-calculate Rates for all data ---
+                # We need to calculate rates because stats are cumulative
+                # Sort first to ensure diff works correctly
+                full_monitor_df = full_monitor_df.sort_values(['container_name', 'timestamp'])
+                
+                # Calculate diffs grouped by container
+                for col in ['net_rx_mb', 'net_tx_mb', 'disk_read_mb', 'disk_write_mb']:
+                    full_monitor_df[f'{col}_diff'] = full_monitor_df.groupby('container_name')[col].diff()
+                
+                # Calculate time diff in seconds
+                full_monitor_df['time_diff'] = full_monitor_df.groupby('container_name')['timestamp'].diff().dt.total_seconds()
+                
+                # Calculate rates (MB/s)
+                for col in ['net_rx_mb', 'net_tx_mb', 'disk_read_mb', 'disk_write_mb']:
+                    rate_col = f'{col}_rate'
+                    full_monitor_df[rate_col] = full_monitor_df[f'{col}_diff'] / full_monitor_df['time_diff']
+                    # Clean up invalid rates (inf, negative, nan)
+                    full_monitor_df.loc[full_monitor_df[rate_col] < 0, rate_col] = 0
+                    full_monitor_df[rate_col] = full_monitor_df[rate_col].fillna(0)
+
+                # --- Group Containers by Prefix ---
                 containers = full_monitor_df['container_name'].unique()
-                
-                plt.figure(figsize=(14, 8))
+                grouped_containers = {}
                 for container in containers:
-                    subset = full_monitor_df[full_monitor_df['container_name'] == container]
-                    if not subset.empty:
-                        plt.plot(subset['timestamp'], subset['cpu_percent'], label=container)
+                    # Get prefix (part before first dash)
+                    if '-' in container:
+                        prefix = container.split('-')[0]
+                    else:
+                        prefix = "other" # Default group for names without dash
+                    
+                    if prefix not in grouped_containers:
+                        grouped_containers[prefix] = []
+                    grouped_containers[prefix].append(container)
                 
-                plt.xlabel('Time')
-                plt.ylabel('CPU Usage (%)')
-                plt.title('Container CPU Usage')
-                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-                plt.tight_layout()
-                plt.grid(True)
-                plt.savefig(os.path.join(output_dir, "cpu_usage.png"))
-                plt.close()
+                print(f"Detected container groups: {list(grouped_containers.keys())}")
 
-                # --- Plot 4: Memory Usage by Container ---
-                plt.figure(figsize=(14, 8))
-                for container in containers:
-                    subset = full_monitor_df[full_monitor_df['container_name'] == container]
-                    if not subset.empty:
-                        plt.plot(subset['timestamp'], subset['mem_usage_mb'], label=container)
-                
-                plt.xlabel('Time')
-                plt.ylabel('Memory Usage (MB)')
-                plt.title('Container Memory Usage')
-                plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
-                plt.tight_layout()
-                plt.grid(True)
-                plt.savefig(os.path.join(output_dir, "memory_usage.png"))
-                plt.close()
+                # --- Generate Plots for Each Group ---
+                for prefix, group_containers in grouped_containers.items():
+                    print(f"Plotting charts for group: {prefix} ({len(group_containers)} containers)")
+                    
+                    # Generate a color map for this group
+                    num_group_containers = len(group_containers)
+                    colors = cm.get_cmap('tab20', num_group_containers) if num_group_containers <= 20 else cm.get_cmap('nipy_spectral', num_group_containers)
+                    container_colors = {c: colors(i) for i, c in enumerate(group_containers)}
+                    
+                    # Helper function to add line labels
+                    def add_line_label(subset, col_name, label_text, color):
+                         if not subset.empty:
+                            plt.annotate(label_text, 
+                                         xy=(subset['timestamp'].iloc[-1], subset[col_name].iloc[-1]),
+                                         xytext=(5, 0), textcoords='offset points',
+                                         color=color, fontsize=8, fontweight='bold')
 
-                # --- Plot 5: Network IO ---
-                # Just summing RX+TX for simplicity or separate
-                plt.figure(figsize=(14, 8))
-                for container in containers:
-                    subset = full_monitor_df[full_monitor_df['container_name'] == container]
-                    if not subset.empty:
-                        # Calculate bandwidth (diff between cumulative stats if they are cumulative, 
-                        # BUT docker stats API usually returns current cumulative. 
-                        # Our monitor script just dumps the raw cumulative or current? 
-                        # The python SDK returns cumulative stats usually.
-                        # Let's assume the monitor script is logging cumulative bytes converted to MB.
-                        # So we should plot the RATE (diff).
-                        
-                        # Resample/Sort first
-                        subset = subset.sort_values('timestamp')
-                        # Calculate rate per second roughly
-                        # For simplicity in this script, we just plot the cumulative or raw values for now 
-                        # as implementing accurate rate calculation requires careful timestamp alignment.
-                        # However, looking at monitor.py, it gets 'rx_bytes'. 
-                        # If we want rate, we need to diff.
-                        pass
+                    # --- Plot 3: CPU Usage by Container ---
+                    plt.figure(figsize=(14, 8))
+                    for container in group_containers:
+                        subset = full_monitor_df[full_monitor_df['container_name'] == container]
+                        if not subset.empty:
+                            plt.plot(subset['timestamp'], subset['cpu_percent'], label=container, color=container_colors[container])
+                            add_line_label(subset, 'cpu_percent', container, container_colors[container])
+                    
+                    plt.xlabel('Time')
+                    plt.ylabel('CPU Usage (%)')
+                    plt.title(f'Container CPU Usage ({prefix})')
+                    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1 if num_group_containers < 15 else 2)
+                    plt.tight_layout()
+                    plt.grid(True)
+                    plt.savefig(os.path.join(output_dir, f"cpu_usage_{prefix}.png"))
+                    plt.close()
+
+                    # --- Plot 4: Memory Usage by Container ---
+                    plt.figure(figsize=(14, 8))
+                    for container in group_containers:
+                        subset = full_monitor_df[full_monitor_df['container_name'] == container]
+                        if not subset.empty:
+                            plt.plot(subset['timestamp'], subset['mem_usage_mb'], label=container, color=container_colors[container])
+                            add_line_label(subset, 'mem_usage_mb', container, container_colors[container])
+                    
+                    plt.xlabel('Time')
+                    plt.ylabel('Memory Usage (MB)')
+                    plt.title(f'Container Memory Usage ({prefix})')
+                    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1 if num_group_containers < 15 else 2)
+                    plt.tight_layout()
+                    plt.grid(True)
+                    plt.savefig(os.path.join(output_dir, f"memory_usage_{prefix}.png"))
+                    plt.close()
+
+                    # --- Plot 5: Network IO ---
+                    plt.figure(figsize=(14, 8))
+                    for container in group_containers:
+                        subset = full_monitor_df[full_monitor_df['container_name'] == container]
+                        if not subset.empty:
+                            # RX is solid
+                            plt.plot(subset['timestamp'], subset['net_rx_mb_rate'], label=f"{container} (RX)", linestyle='-', color=container_colors[container])
+                            add_line_label(subset, 'net_rx_mb_rate', f"{container} (RX)", container_colors[container])
+                            
+                            # TX is dashed
+                            plt.plot(subset['timestamp'], subset['net_tx_mb_rate'], label=f"{container} (TX)", linestyle='--', color=container_colors[container], alpha=0.7)
+                            add_line_label(subset, 'net_tx_mb_rate', f"{container} (TX)", container_colors[container])
+                    
+                    plt.xlabel('Time')
+                    plt.ylabel('Network Rate (MB/s)')
+                    plt.title(f'Container Network I/O Rate ({prefix})')
+                    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1 if num_group_containers < 15 else 2)
+                    plt.grid(True)
+                    plt.tight_layout()
+                    plt.savefig(os.path.join(output_dir, f"network_io_{prefix}.png"))
+                    plt.close()
+
+                    # --- Plot 6: Disk IO ---
+                    plt.figure(figsize=(14, 8))
+                    for container in group_containers:
+                        subset = full_monitor_df[full_monitor_df['container_name'] == container]
+                        if not subset.empty:
+                            # Read is solid
+                            plt.plot(subset['timestamp'], subset['disk_read_mb_rate'], label=f"{container} (Read)", linestyle='-', color=container_colors[container])
+                            add_line_label(subset, 'disk_read_mb_rate', f"{container} (Read)", container_colors[container])
+
+                            # Write is dashed
+                            plt.plot(subset['timestamp'], subset['disk_write_mb_rate'], label=f"{container} (Write)", linestyle='--', color=container_colors[container], alpha=0.7)
+                            add_line_label(subset, 'disk_write_mb_rate', f"{container} (Write)", container_colors[container])
+                    
+                    plt.ylabel('Disk Rate (MB/s)')
+                    plt.xlabel('Time')
+                    plt.title(f'Container Disk I/O Rate ({prefix})')
+                    plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left', ncol=1 if num_group_containers < 15 else 2)
+                    plt.grid(True)
+                    plt.tight_layout()
+                    plt.savefig(os.path.join(output_dir, f"disk_io_{prefix}.png"))
+                    plt.close()
         else:
             print("No valid resource data loaded.")
     else:
