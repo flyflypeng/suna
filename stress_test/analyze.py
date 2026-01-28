@@ -116,21 +116,12 @@ def analyze_results(locust_file=None, resource_files=None, output_dir="plots"):
                     colors = cm.get_cmap('tab20', num_group_containers) if num_group_containers <= 20 else cm.get_cmap('nipy_spectral', num_group_containers)
                     container_colors = {c: colors(i) for i, c in enumerate(group_containers)}
                     
-                    # Helper function to add line labels
-                    def add_line_label(subset, col_name, label_text, color):
-                         if not subset.empty:
-                            plt.annotate(label_text, 
-                                         xy=(subset['timestamp'].iloc[-1], subset[col_name].iloc[-1]),
-                                         xytext=(5, 0), textcoords='offset points',
-                                         color=color, fontsize=8, fontweight='bold')
-
                     # --- Plot 3: CPU Usage by Container ---
                     plt.figure(figsize=(14, 8))
                     for container in group_containers:
                         subset = full_monitor_df[full_monitor_df['container_name'] == container]
                         if not subset.empty:
                             plt.plot(subset['timestamp'], subset['cpu_percent'], label=container, color=container_colors[container])
-                            add_line_label(subset, 'cpu_percent', container, container_colors[container])
                     
                     plt.xlabel('Time')
                     plt.ylabel('CPU Usage (%)')
@@ -147,7 +138,6 @@ def analyze_results(locust_file=None, resource_files=None, output_dir="plots"):
                         subset = full_monitor_df[full_monitor_df['container_name'] == container]
                         if not subset.empty:
                             plt.plot(subset['timestamp'], subset['mem_usage_mb'], label=container, color=container_colors[container])
-                            add_line_label(subset, 'mem_usage_mb', container, container_colors[container])
                     
                     plt.xlabel('Time')
                     plt.ylabel('Memory Usage (MB)')
@@ -165,11 +155,9 @@ def analyze_results(locust_file=None, resource_files=None, output_dir="plots"):
                         if not subset.empty:
                             # RX is solid
                             plt.plot(subset['timestamp'], subset['net_rx_mb_rate'], label=f"{container} (RX)", linestyle='-', color=container_colors[container])
-                            add_line_label(subset, 'net_rx_mb_rate', f"{container} (RX)", container_colors[container])
                             
                             # TX is dashed
                             plt.plot(subset['timestamp'], subset['net_tx_mb_rate'], label=f"{container} (TX)", linestyle='--', color=container_colors[container], alpha=0.7)
-                            add_line_label(subset, 'net_tx_mb_rate', f"{container} (TX)", container_colors[container])
                     
                     plt.xlabel('Time')
                     plt.ylabel('Network Rate (MB/s)')
@@ -187,11 +175,9 @@ def analyze_results(locust_file=None, resource_files=None, output_dir="plots"):
                         if not subset.empty:
                             # Read is solid
                             plt.plot(subset['timestamp'], subset['disk_read_mb_rate'], label=f"{container} (Read)", linestyle='-', color=container_colors[container])
-                            add_line_label(subset, 'disk_read_mb_rate', f"{container} (Read)", container_colors[container])
 
                             # Write is dashed
                             plt.plot(subset['timestamp'], subset['disk_write_mb_rate'], label=f"{container} (Write)", linestyle='--', color=container_colors[container], alpha=0.7)
-                            add_line_label(subset, 'disk_write_mb_rate', f"{container} (Write)", container_colors[container])
                     
                     plt.ylabel('Disk Rate (MB/s)')
                     plt.xlabel('Time')
