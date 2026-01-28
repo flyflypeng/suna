@@ -141,3 +141,23 @@ locust -f locustfile.py \
 *   `throughput_rps.png`: 吞吐量 (RPS)
 *   `cpu_usage.png`: 容器 CPU 利用率
 *   `memory_usage.png`: 容器内存使用量
+
+## 5. 环境清理
+
+在多次压测之间，可能需要清理 Suna 的执行环境（主要是删除所有的 Thread），以防止旧数据干扰或占用过多资源。
+
+可以使用 `clean_suna_env.sh` 脚本来快速删除所有会话。
+
+**用法：**
+
+```bash
+# 需要提供 API Key
+./clean_suna_env.sh -k "pk_xxxx:sk_xxxx" -u "http://localhost:8000/api"
+```
+
+**参数说明：**
+
+*   `-k, --key`: Suna 的 API Key (格式: `pk_xxx:sk_xxx`)。
+*   `-u, --url`: Suna API 地址 (默认: `http://localhost:8000/api`)。
+
+该脚本会自动获取所有 Thread 并逐个删除，删除操作会级联清理关联的 Agent 任务和沙箱环境。

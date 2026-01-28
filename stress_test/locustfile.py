@@ -96,7 +96,7 @@ class SunaUser(HttpUser):
         payload = {
             "thread_id": self.thread_id,
             "prompt": TEST_PROMPT,
-            "model_name": "openai/gpt-4o-mini" # Use a cheap/fast model or a mocked one if available
+            "model_name": "openai-compatible/glm-4.7" # Use a cheap/fast model or a mocked one if available
         }
         
         # Record start time for the entire flow
