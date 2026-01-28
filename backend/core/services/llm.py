@@ -108,47 +108,8 @@ def setup_provider_router(openai_compatible_api_key: str = None, openai_compatib
     ]
     
     # Build fallbacks from registry
-    from core.ai_models import model_manager
+    # Disabled by user request: force fallbacks to be empty
     fallbacks = []
-    
-    # 1. Add registry-defined fallbacks
-    try:
-        available_models = model_manager.list_available_models(include_disabled=True)
-        for model_info in available_models:
-            model_id = model_info['id']
-            model = model_manager.get_model(model_id)
-            if model and model.fallback_models:
-                # LiteLLM expects fallbacks as a list of dicts: [{"model_name": ["fallback_1", "fallback_2"]}]
-                fallbacks.append({
-                    model_id: model.fallback_models
-                })
-                # logger.debug(f"Added fallback for {model_id}: {model.fallback_models}")
-    except Exception as e:
-        logger.warning(f"Failed to load fallbacks from registry: {e}")
-
-    # 2. Add legacy Bedrock fallbacks (keep for backward compatibility if needed)
-    fallbacks.extend([
-        # MAP-tagged Haiku 4.5 (default) -> Sonnet 4 -> Sonnet 4.5
-        {
-            "bedrock/converse/arn:aws:bedrock:us-west-2:935064898258:application-inference-profile/heol2zyy5v48": [
-                "bedrock/converse/arn:aws:bedrock:us-west-2:935064898258:application-inference-profile/tyj1ks3nj9qf",
-                "bedrock/converse/arn:aws:bedrock:us-west-2:935064898258:application-inference-profile/few7z4l830xh",
-            ]
-        },
-        # MAP-tagged Sonnet 4.5 -> Sonnet 4 -> Haiku 4.5
-        {
-            "bedrock/converse/arn:aws:bedrock:us-west-2:935064898258:application-inference-profile/few7z4l830xh": [
-                "bedrock/converse/arn:aws:bedrock:us-west-2:935064898258:application-inference-profile/tyj1ks3nj9qf",
-                "bedrock/converse/arn:aws:bedrock:us-west-2:935064898258:application-inference-profile/heol2zyy5v48",
-            ]
-        },
-        # MAP-tagged Sonnet 4 -> Haiku 4.5
-        {
-            "bedrock/converse/arn:aws:bedrock:us-west-2:935064898258:application-inference-profile/tyj1ks3nj9qf": [
-                "bedrock/converse/arn:aws:bedrock:us-west-2:935064898258:application-inference-profile/heol2zyy5v48",
-            ]
-        }
-    ])
     
     provider_router = Router(
         model_list=model_list,
