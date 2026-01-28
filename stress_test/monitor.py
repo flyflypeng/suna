@@ -71,11 +71,19 @@ def main():
     parser.add_argument('--interval', type=int, default=5, help='Sampling interval in seconds')
     parser.add_argument('--duration', type=int, default=300, help='Duration to run in seconds')
     parser.add_argument('--patterns', nargs='+', required=True, help='Regex patterns for container names to monitor')
+    parser.add_argument('--output-dir', help='Directory to save output CSV file')
     
     args = parser.parse_args()
     
     client = docker.from_env()
-    output_file = f'resource_stats_{args.node_name}.csv'
+    filename = f'resource_stats_{args.node_name}.csv'
+    
+    if args.output_dir:
+        if not os.path.exists(args.output_dir):
+            os.makedirs(args.output_dir)
+        output_file = os.path.join(args.output_dir, filename)
+    else:
+        output_file = filename
     
     print(f"Starting monitor on {args.node_name}. Output: {output_file}")
     print(f"Monitoring patterns: {args.patterns}")

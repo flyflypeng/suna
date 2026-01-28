@@ -30,7 +30,7 @@ pip install -r requirements.txt
 
 ```bash
 # 监控时长设为 600秒 (10分钟)，每5秒采样一次
-python monitor.py --node-name node_a --interval 5 --duration 600 --patterns "supabase" "suna"
+python monitor.py --node-name node_a --interval 5 --duration 600 --patterns "supabase" "suna" --output-dir ./monitor_data
 ```
 
 ### Node B (Daytona Sandbox)
@@ -38,12 +38,19 @@ python monitor.py --node-name node_a --interval 5 --duration 600 --patterns "sup
 监控 Daytona 沙箱容器：
 
 ```bash
-python monitor.py --node-name node_b --interval 5 --duration 600 --patterns "daytona"
+python monitor.py --node-name node_b --interval 5 --duration 600 --patterns "daytona" --output-dir ./monitor_data
 ```
 
 ## 3. 执行压测 (Locust)
 
+**重要说明：**
+目前的 Locust 脚本已更新为以 **"Agent 任务完整生命周期"** 为统计维度。
+- **响应时间 (Response Time)**: 统计的是从发起 `/api/agent/start` 到 `/api/agent-run/{id}` 状态变为 `completed`/`failed` 的完整耗时。这包含了 LLM 推理、工具调用、沙箱执行等所有后台处理时间。
+- **RPS (Requests Per Second)**: 代表**每秒完成的任务数** (Tasks Per Second)，而非单纯的 HTTP 请求数。
+- **Failure**: 任何触发失败、轮询超时或任务状态为 `failed`/`error` 的情况都会被计为错误。
+
 ### 如何获取真实的复杂 Prompt？
+
 
 为了真实模拟用户行为，建议通过浏览器抓取实际的请求 Payload。
 
@@ -87,7 +94,6 @@ export SUNA_API_KEY="pk_xxxxxxxx:sk_xxxxxxxx"
 # --host: 目标服务地址 (Node A 的 IP)
 locust -f locustfile.py \
     --host http://<NODE_A_IP>:8000 \
-    --headless \
     -u 50 -r 5 \
     --run-time 10m \
     --csv=test_results
