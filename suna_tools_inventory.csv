@@ -1,0 +1,28 @@
+﻿Category,Tool Name,Display Name,Description,Execution Environment,Key Dependencies,File Path
+智能体构建器,agent_creation_tool,智能体创建器,创建新的 AI 智能体,后端服务,Supabase 数据库,backend/core/tools/agent_creation_tool.py
+,agent_config_tool,智能体配置,配置智能体设置,后端服务,Supabase 数据库,backend/core/tools/agent_builder_tools/agent_config_tool.py
+,trigger_tool,触发器与自动化,管理定时触发器,后端服务,Supabase 数据库,backend/core/tools/agent_builder_tools/trigger_tool.py
+,workflow_tool,工作流管理器,管理智能体工作流,后端服务,Supabase 数据库,backend/core/tools/agent_builder_tools/workflow_tool.py
+,mcp_search_tool,MCP 搜索,查找 MCP 集成,后端服务,Composio API,backend/core/tools/agent_builder_tools/mcp_search_tool.py
+,credential_profile_tool,凭证管理器,管理 API 认证信息,后端服务,Composio API,backend/core/tools/agent_builder_tools/credential_profile_tool.py
+浏览器自动化,browser_tool,浏览器自动化,控制无头浏览器,Daytona 沙箱,Stagehand; Playwright,backend/core/tools/browser_tool.py
+通信与交互,message_tool,聊天与消息,与用户交互 (提问/通知),后端服务,无,backend/core/tools/message_tool.py
+,expand_msg_tool,消息展开器,查看被截断的消息,后端服务,Supabase 数据库,backend/core/tools/expand_msg_tool.py
+,vapi_voice_tool,语音交互,电话/语音通话,云端/API,Vapi API,backend/core/tools/vapi_voice_tool.py
+内容创作,sb_docs_tool,文档创建器,创建 HTML 文档,Daytona 沙箱,HTML/CSS 模板,backend/core/tools/sb_docs_tool.py
+,sb_presentation_tool,演示文稿创建器,创建 HTML 演示文稿,Daytona 沙箱,Reveal.js / HTML,backend/core/tools/sb_presentation_tool.py
+,sb_designer_tool,社交媒体设计器,创建社交媒体图片,Daytona 沙箱,HTML/CSS -> 图片,backend/core/tools/sb_designer_tool.py
+规划与知识,task_list_tool,任务管理,管理待办事项列表和计划,后端服务,Supabase 数据库,backend/core/tools/task_list_tool.py
+,sb_kb_tool,知识库,个人知识库检索,Daytona 沙箱,kb-fusion 二进制文件,backend/core/tools/sb_kb_tool.py
+研究与情报,web_search_tool,网页搜索,搜索网络并抓取内容,云端/API,Tavily API; Firecrawl API,backend/core/tools/web_search_tool.py
+,people_search_tool,人物研究,查找专业背景信息,云端/API,Exa API,backend/core/tools/people_search_tool.py
+,company_search_tool,公司研究,查找公司信息,云端/API,Exa API,backend/core/tools/company_search_tool.py
+,paper_search_tool,学术研究,搜索学术论文,云端/API,Semantic Scholar API,backend/core/tools/paper_search_tool.py
+,data_providers_tool,数据提供商,访问结构化数据 (LinkedIn/Finance),云端/API,多个第三方 API,backend/core/tools/data_providers_tool.py
+,image_search_tool,图片搜索,搜索图片,云端/API,Serper API,backend/core/tools/image_search_tool.py
+系统核心 (沙箱),sb_shell_tool,终端控制,执行 Bash 命令和脚本,Daytona 沙箱,Linux Shell,backend/core/tools/sb_shell_tool.py
+,sb_files_tool,文件系统,管理文件和目录,Daytona 沙箱,文件系统,backend/core/tools/sb_files_tool.py
+,sb_upload_file_tool,文件上传,上传本地文件到云存储,Daytona 沙箱,云存储提供商,backend/core/tools/sb_upload_file_tool.py
+,sb_expose_tool,端口暴露,将本地端口暴露为公共 URL,Daytona 沙箱,反向代理,backend/core/tools/sb_expose_tool.py
+视觉与多媒体,sb_vision_tool,计算机视觉,在沙箱中分析图片,云端/API,GPT-4o Vision,backend/core/tools/sb_vision_tool.py
+,sb_image_edit_tool,图片生成器,生成和编辑图片,云端/API,DALL-E 3,backend/core/tools/sb_image_edit_tool.py
