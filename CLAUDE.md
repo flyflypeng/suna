@@ -23,7 +23,7 @@ Kortix (formerly Suna) is an open-source platform for building, managing, and tr
 1. **Backend API** (FastAPI/Python) - REST endpoints, thread management, LLM orchestration
 2. **Backend Worker** (Dramatiq) - Background agent task execution
 3. **Frontend** (Next.js/React) - Web UI for agent management
-4. **Agent Sandbox** (Daytona) - Isolated runtime for agent actions - non optional - core part of Suna Kortix
+4. **Agent Sandbox** (Daytona) - OPTIONAL - Isolated runtime for agent actions (graceful degradation)
 5. **Database** (Supabase) - PostgreSQL with authentication and real-time subscriptions
 
 ## This Fork: Self-Hosted Setup
@@ -521,6 +521,51 @@ The backend sets `WindowsProactorEventLoopPolicy` on Windows (see `backend/api.p
 ## Mobile App
 
 The repository includes a React Native mobile app in `apps/mobile/` (Expo-based). It shares similar architecture with the web frontend but is currently in development.
+
+### Key Mobile Development Practices
+
+The mobile app has specific development rules detailed in `apps/mobile/.cursorrules`:
+
+**Core Stacking Rules:**
+- **Colors ONLY via design tokens** - Never hardcode colors. Use `bg-background`, `bg-card`, `text-foreground`, etc. from `global.css`
+- **Roobert font ONLY** - Use `font-roobert`, `font-roobert-medium`, etc. Never use system fonts
+- **One component per file** - Create index.ts files for clean imports
+- **Extract logic to custom hooks** - Keep components presentational
+
+**Technology Stack:**
+- React Native (Expo) with New Architecture enabled
+- NativeWind (Tailwind CSS for React Native)
+- Expo Router for routing (file-based, typed routes)
+- Lucide React Native for icons (never PNG images)
+- React Native Reanimated for animations
+- TypeScript strict mode
+
+**Development Commands:**
+```bash
+cd apps/mobile
+
+# Start dev server
+npx expo start --clear
+
+# Run on iOS/Android (with Expo Go)
+npx expo start
+npx expo start --ios
+npx expo start --android
+
+# Run on device/simulator with native bundle
+npx expo run:ios
+npx expo run:android
+
+# Install packages
+npm install package-name
+```
+
+**Key Patterns:**
+- Use `window.location.origin` for supabase client (multi-domain support)
+- Theme-aware: Light mode first, dark mode as variant
+- Spring animations: `{ damping: 15, stiffness: 400 }` for responsive feel
+- Console log user interactions with emojis (🎯 for actions, 🤖 for AI ops, etc.)
+- Import order: UI → Feature → Hooks → External → React → React Native → Icons → Types
 
 ## Troubleshooting (Self-Hosted Setup)
 
