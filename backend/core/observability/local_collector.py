@@ -18,7 +18,8 @@ class LocalMetricsCollector:
             cls._instance = super(LocalMetricsCollector, cls).__new__(cls, *args, **kwargs)
             logs_dir = os.path.join(os.getcwd(), "logs")
             os.makedirs(logs_dir, exist_ok=True)
-            cls._instance.log_file = os.path.join(logs_dir, "metrics_logs.jsonl")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            cls._instance.log_file = os.path.join(logs_dir, f"metrics_logs_{timestamp}.jsonl")
         return cls._instance
 
     def set_context(self, trace_id: str):
@@ -87,7 +88,7 @@ class LocalMetricsCollector:
             "success": success
         })
 
-    def log_agent_execution(self, thread_id: str, trace_id: str, duration_ms: float, steps: int):
+    def log_agent_execution_steps(self, thread_id: str, trace_id: str, duration_ms: float, steps: int):
          self.log_event("agent_execution", {
             "thread_id": thread_id,
             "trace_id": trace_id,

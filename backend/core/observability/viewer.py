@@ -306,12 +306,29 @@ def analyze_performance(logs):
 
 def main():
     parser = argparse.ArgumentParser(description="View local observability metrics")
-    parser.add_argument("--file", default="metrics_logs.jsonl", help="Path to jsonl log file")
+    parser.add_argument("--file", help="Path to jsonl log file")
     parser.add_argument("--trace-id", help="Filter by specific trace ID")
     args = parser.parse_args()
 
     global LOG_FILE
-    LOG_FILE = args.file
+    
+    if args.file:
+        LOG_FILE = args.file
+    else:
+        # Find latest log file
+        logs_dir = os.path.join(os.getcwd(), "logs")
+        if os.path.exists(logs_dir):
+            # Match metrics_logs_*.jsonl and the original metrics_logs.jsonl
+            log_files = [f for f in os.listdir(logs_dir) if (f.startswith("metrics_logs_") or f == "metrics_logs.jsonl") and f.endswith(".jsonl")]
+            if log_files:
+                # Sort by name (which works for timestamps) to get the latest
+                latest_log = sorted(log_files)[-1]
+                LOG_FILE = os.path.join(logs_dir, latest_log)
+                print(f"Using latest log file: {LOG_FILE}")
+            else:
+                 LOG_FILE = "metrics_logs.jsonl"
+        else:
+             LOG_FILE = "metrics_logs.jsonl"
 
     logs = load_logs()
 

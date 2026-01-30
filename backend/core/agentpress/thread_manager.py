@@ -558,7 +558,7 @@ class ThreadManager:
             #     config = ProcessorConfig()  # Fallback
 
             # Record execution metadata
-            local_collector.log_agent_execution(
+            local_collector.log_agent_execution_steps(
                 thread_id=thread_id,
                 trace_id=str(self.trace.trace_id) if hasattr(self.trace, 'trace_id') else "unknown",
                 duration_ms=(time.time() - start_time) * 1000,

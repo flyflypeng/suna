@@ -33,6 +33,10 @@ class MockLangfuse(MockBase):
 class MockTrace(MockBase):
     def __init__(self, id=None):
         super().__init__(id or str(uuid.uuid4()))
+    
+    @property
+    def trace_id(self):
+        return self.id
 
 class MockSpan(MockBase):
     def __init__(self, id=None):
