@@ -318,11 +318,26 @@ def main():
         # Find latest log file
         logs_dir = os.path.join(os.getcwd(), "logs")
         if os.path.exists(logs_dir):
-            # Match metrics_logs_*.jsonl and the original metrics_logs.jsonl
-            log_files = [f for f in os.listdir(logs_dir) if (f.startswith("metrics_logs_") or f == "metrics_logs.jsonl") and f.endswith(".jsonl")]
+            import re
+            # Match metrics_logs_YYYYMMDD_HHMMSS.jsonl or metrics_logs.jsonl
+            # Regex for timestamped files: metrics_logs_\d{8}_\d{6}\.jsonl
+            log_files = []
+            pattern = re.compile(r"^metrics_logs_(\d{8}_\d{6})\.jsonl$")
+            
+            for f in os.listdir(logs_dir):
+                if f == "metrics_logs.jsonl":
+                    log_files.append((f, "")) # Empty string for timestamp, sorts first
+                else:
+                    match = pattern.match(f)
+                    if match:
+                        log_files.append((f, match.group(1)))
+            
             if log_files:
-                # Sort by name (which works for timestamps) to get the latest
-                latest_log = sorted(log_files)[-1]
+                # Sort by timestamp (second element in tuple)
+                # Timestamp strings sort correctly lexicographically
+                # metrics_logs.jsonl has "" timestamp, so it comes first
+                # Latest timestamp comes last
+                latest_log = sorted(log_files, key=lambda x: x[1])[-1][0]
                 LOG_FILE = os.path.join(logs_dir, latest_log)
                 print(f"Using latest log file: {LOG_FILE}")
             else:
